@@ -88,6 +88,8 @@ The OpenSSL certificate store associated with the SSL context shall be obtained 
 If SSL_CTX_get_cert_store fails then tlsio_openssl_open shall return a non-zero value.
 A new memory BIO shall be created to load the certificate in by calling BIO_new_mem_buf and passing the TrustedCerts payload to it.
 If BIO_new_mem_buf fails then tlsio_openssl_open shall return a non-zero value.
+
+The following shall be repeated until all certificates passed via TrustedCerts are read:
 The X509 certificate shall be read from the BIO by using PEM_read_bio_X509.
 If PEM_read_bio_X509 fails then tlsio_openssl_open shall return a non-zero value.
 The certificate shall be added to the OpenSSL context store by calling X509_STORE_add_cert and passing the certificate as argument.
