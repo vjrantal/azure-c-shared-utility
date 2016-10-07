@@ -1,4 +1,4 @@
-tlsio_arduino
+tlsio_openssl
 =============
 
 ## Overview
@@ -17,21 +17,12 @@ tlsio_openssl implements a tls adapter for the OpenSSL TLS library.
 ## Exposed API
 
 ```c
-MOCKABLE_FUNCTION(, int, tlsio_openssl_init);
-MOCKABLE_FUNCTION(, void, tlsio_openssl_deinit);
-
-MOCKABLE_FUNCTION(, CONCRETE_IO_HANDLE, tlsio_openssl_create, void*, io_create_parameters);
-MOCKABLE_FUNCTION(, void, tlsio_openssl_destroy, CONCRETE_IO_HANDLE, tls_io);
-MOCKABLE_FUNCTION(, int, tlsio_openssl_open, CONCRETE_IO_HANDLE, tls_io, ON_IO_OPEN_COMPLETE, on_io_open_complete, void*, on_io_open_complete_context, ON_BYTES_RECEIVED, on_bytes_received, void*, on_bytes_received_context, ON_IO_ERROR, on_io_error, void*, on_io_error_context);
-MOCKABLE_FUNCTION(, int, tlsio_openssl_close, CONCRETE_IO_HANDLE, tls_io, ON_IO_CLOSE_COMPLETE, on_io_close_complete, void*, callback_context);
-MOCKABLE_FUNCTION(, int, tlsio_openssl_send, CONCRETE_IO_HANDLE, tls_io, const void*, buffer, size_t, size, ON_SEND_COMPLETE, on_send_complete, void*, callback_context);
-MOCKABLE_FUNCTION(, void, tlsio_openssl_dowork, CONCRETE_IO_HANDLE, tls_io);
-MOCKABLE_FUNCTION(, int, tlsio_openssl_setoption, CONCRETE_IO_HANDLE, tls_io, const char*, optionName, const void*, value);
-
 MOCKABLE_FUNCTION(, const IO_INTERFACE_DESCRIPTION*, tlsio_openssl_get_interface_description);
 ```
 
 ### tlsio_openssl_create
+
+tlsio_openssl_create is the implementation provided via tlsio_openssl_get_interface_description for the concrete_io_create member.
 
 ```c
 extern CONCRETE_IO_HANDLE tlsio_openssl_create(void* io_create_parameters);
@@ -94,6 +85,7 @@ The X509 certificate shall be read from the BIO by using PEM_read_bio_X509.
 If PEM_read_bio_X509 fails then tlsio_openssl_open shall return a non-zero value.
 The certificate shall be added to the OpenSSL context store by calling X509_STORE_add_cert and passing the certificate as argument.
 The certificate and memory BIO shall be freed after the certificate has been added to the store.
+
 
 ### tlsio_openssl_close
 
