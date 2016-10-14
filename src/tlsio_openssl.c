@@ -910,7 +910,6 @@ int tlsio_openssl_init(void)
     (void)SSL_library_init();
 
     SSL_load_error_strings();
-    ERR_load_BIO_strings();
     OpenSSL_add_all_algorithms();
 
     if (openssl_static_locks_install() != 0)
