@@ -59,3 +59,7 @@ if(use_cyclonessl AND WIN32)
 	add_subdirectory(tlsio_cyclonessl_ut)
 	add_subdirectory(tlsio_cyclonessl_socket_bsd_ut)
 endif()
+
+if(${use_openssl})
+	add_subdirectory(tlsio_openssl_ut)
+endif()
