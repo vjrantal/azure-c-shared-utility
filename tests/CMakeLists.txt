@@ -60,6 +60,7 @@ if(use_cyclonessl AND WIN32)
 	add_subdirectory(tlsio_cyclonessl_ut)
 	add_subdirectory(tlsio_cyclonessl_socket_bsd_ut)
 endif()
+add_subdirectory(tlsio_esp8266_ut)
 
 #Add template as reference for new tests
 add_subdirectory(template_ut)
