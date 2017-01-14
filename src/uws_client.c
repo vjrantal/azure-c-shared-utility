@@ -421,31 +421,47 @@ static void indicate_ws_close_complete(UWS_CLIENT_INSTANCE* uws_client)
     }
 }
 
-static void indicate_ws_error_and_close(UWS_CLIENT_INSTANCE* uws_client, WS_ERROR error_code, unsigned int close_error_code)
+static int send_close_frame(UWS_CLIENT_INSTANCE* uws_client, unsigned int close_error_code)
 {
     unsigned char* close_frame;
     unsigned char close_frame_payload[2];
     size_t close_frame_length;
+    int result;
 
     close_frame_payload[0] = (unsigned char)(close_error_code >> 8);
     close_frame_payload[1] = (unsigned char)(close_error_code & 0xFF);
-
-    uws_client->uws_state = UWS_STATE_ERROR;
 
     /* Codes_SRS_UWS_CLIENT_01_140: [ To avoid confusing network intermediaries (such as intercepting proxies) and for security reasons that are further discussed in Section 10.3, a client MUST mask all frames that it sends to the server (see Section 5.3 for further details). ]*/
     if (uws_frame_encoder_encode(uws_client->encode_buffer, WS_CLOSE_FRAME, close_frame_payload, sizeof(close_frame_payload), true, true, 0) != 0)
     {
         LogError("Encoding of CLOSE failed.");
+        result = __LINE__;
     }
     else
     {
         close_frame = BUFFER_u_char(uws_client->encode_buffer);
         close_frame_length = BUFFER_length(uws_client->encode_buffer);
+
+        /* Codes_SRS_UWS_CLIENT_01_471: [ The callback `on_underlying_io_close_sent` shall be passed as argument to `xio_send`. ]*/
         if (xio_send(uws_client->underlying_io, close_frame, close_frame_length, NULL, NULL) != 0)
         {
             LogError("Sending CLOSE frame failed.");
+            result = __LINE__;
+        }
+        else
+        {
+            result = 0;
         }
     }
+
+    return result;
+}
+
+static void indicate_ws_error_and_close(UWS_CLIENT_INSTANCE* uws_client, WS_ERROR error_code, unsigned int close_error_code)
+{
+    uws_client->uws_state = UWS_STATE_ERROR;
+
+    (void)send_close_frame(uws_client, close_error_code);
 
     uws_client->on_ws_error(uws_client->on_ws_error_context, error_code);
 }
@@ -606,6 +622,8 @@ static void on_underlying_io_close_sent(void* context, IO_SEND_RESULT io_send_re
         case IO_SEND_CANCELLED:
             if (uws_client->uws_state == UWS_STATE_CLOSING_SENDING_CLOSE)
             {
+                uws_client->uws_state = UWS_STATE_CLOSING_UNDERLYING_IO;
+
                 /* Codes_SRS_UWS_CLIENT_01_490: [ When `on_underlying_io_close_sent` is called while the uws client is CLOSING, `on_underlying_io_close_sent` shall close the underlying IO by calling `xio_close`. ]*/
                 if (xio_close(uws_client->underlying_io, on_underlying_io_close_complete, uws_client) != 0)
                 {
@@ -1330,8 +1348,60 @@ int uws_client_close(UWS_CLIENT_HANDLE uws_client, ON_WS_CLOSE_COMPLETE on_ws_cl
 /* Codes_SRS_UWS_CLIENT_01_317: [ Clients SHOULD NOT close the WebSocket connection arbitrarily. ]*/
 int uws_client_close_handshake(UWS_CLIENT_HANDLE uws_client, uint16_t close_code, const char* close_reason, ON_WS_CLOSE_COMPLETE on_ws_close_complete, void* on_ws_close_complete_context)
 {
-    (void)uws_client, close_code, close_reason, on_ws_close_complete, on_ws_close_complete_context;
-    return 0;
+    int result;
+
+    if (uws_client == NULL)
+    {
+        /* Codes_SRS_UWS_CLIENT_01_467: [ if `uws_client` is NULL, `uws_client_close_handshake` shall return a non-zero value. ]*/
+        LogError("NULL uws_client");
+        result = __LINE__;
+    }
+    else
+    {
+        if ((uws_client->uws_state == UWS_STATE_CLOSED) ||
+            /* Codes_SRS_UWS_CLIENT_01_474: [ `uws_client_close_handshake` when already CLOSING shall fail and return a non-zero value. ]*/
+            (uws_client->uws_state == UWS_STATE_CLOSING_SENDING_CLOSE) ||
+            (uws_client->uws_state == UWS_STATE_CLOSING_UNDERLYING_IO))
+        {
+            /* Codes_SRS_UWS_CLIENT_01_473: [ `uws_client_close_handshake` when no open action has been issued shall fail and return a non-zero value. ]*/
+            LogError("uws_client_close_handshake has been called when already CLOSED");
+            result = __LINE__;
+        }
+        else
+        {
+            (void)close_reason;
+
+            /* Codes_SRS_UWS_CLIENT_01_468: [ `on_ws_close_complete` and `on_ws_close_complete_context` shall be saved and the callback `on_ws_close_complete` shall be triggered when the close is complete. ]*/
+            /* Codes_SRS_UWS_CLIENT_01_469: [ The `on_ws_close_complete` argument shall be allowed to be NULL, in which case no callback shall be called when the close is complete. ]*/
+            /* Codes_SRS_UWS_CLIENT_01_470: [ `on_ws_close_complete_context` shall also be allowed to be NULL. ]*/
+            uws_client->on_ws_close_complete = on_ws_close_complete;
+            uws_client->on_ws_close_complete_context = on_ws_close_complete_context;
+
+            /* Codes_SRS_UWS_CLIENT_01_465: [ `uws_client_close_handshake` shall initiate the close handshake by sending a close frame to the peer. ]*/
+            if (send_close_frame(uws_client, close_code) != 0)
+            {
+                /* Codes_SRS_UWS_CLIENT_01_472: [ If `xio_send` fails, `uws_client_close_handshake` shall fail and return a non-zero value. ]*/
+                LogError("Sending CLOSE frame failed");
+                result = __LINE__;
+            }
+            else
+            {
+                LIST_ITEM_HANDLE first_pending_send;
+
+                while ((first_pending_send = singlylinkedlist_get_head_item(uws_client->pending_sends)) != NULL)
+                {
+                    WS_PENDING_SEND* ws_pending_send = (WS_PENDING_SEND*)singlylinkedlist_item_get_value(first_pending_send);
+
+                    complete_send_frame(ws_pending_send, first_pending_send, WS_SEND_FRAME_CANCELLED);
+                }
+
+                /* Codes_SRS_UWS_CLIENT_01_466: [ On success `uws_client_close_handshake` shall return 0. ]*/
+                result = 0;
+            }
+        }
+    }
+
+    return result;
 }
 
 static void on_underlying_io_send_complete(void* context, IO_SEND_RESULT send_result)

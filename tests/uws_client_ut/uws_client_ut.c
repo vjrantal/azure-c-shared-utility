@@ -1996,6 +1996,300 @@ TEST_FUNCTION(uws_close_with_2_pending_send_frames_indicates_the_frames_as_cance
     uws_client_destroy(uws_client);
 }
 
+/* uws_client_close_handshake */
+
+/* Tests_SRS_UWS_CLIENT_01_465: [ `uws_client_close_handshake` shall initiate the close handshake by sending a close frame to the peer. ]*/
+/* Tests_SRS_UWS_CLIENT_01_466: [ On success `uws_client_close_handshake` shall return 0. ]*/
+/* Tests_SRS_UWS_CLIENT_01_468: [ `on_ws_close_complete` and `on_ws_close_complete_context` shall be saved and the callback `on_ws_close_complete` shall be triggered when the close is complete. ]*/
+/* Tests_SRS_UWS_CLIENT_01_471: [ The callback `on_underlying_io_close_sent` shall be passed as argument to `xio_send`. ]*/
+TEST_FUNCTION(uws_client_close_handshake_sends_the_close_frame)
+{
+    // arrange
+    TLSIO_CONFIG tlsio_config;
+    int result;
+    UWS_CLIENT_HANDLE uws_client;
+    const char test_upgrade_response[] = "HTTP/1.1 101 Switching Protocols\r\n\r\n";
+    unsigned char close_frame_payload[] = { 0x03, 0xEA };
+    unsigned char close_frame[] = { 0x88, 0x82, 0x00, 0x00, 0x00, 0x00, 0x03, 0xEA };
+    BUFFER_HANDLE buffer_handle;
+
+    tlsio_config.hostname = "test_host";
+    tlsio_config.port = 444;
+
+    EXPECTED_CALL(gballoc_malloc(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(BUFFER_new())
+        .CaptureReturn(&buffer_handle);
+
+    uws_client = uws_client_create("test_host", 444, "/aaa", true, protocols, sizeof(protocols) / sizeof(protocols[0]));
+    (void)uws_client_open(uws_client, test_on_ws_open_complete, (void*)0x4242, test_on_ws_frame_received, (void*)0x4243, test_on_ws_peer_closed, (void*)0x4301, test_on_ws_error, (void*)0x4244);
+    g_on_io_open_complete(g_on_io_open_complete_context, IO_OPEN_OK);
+    g_on_bytes_received(g_on_bytes_received_context, (const unsigned char*)test_upgrade_response, sizeof(test_upgrade_response) - 1);
+    umock_c_reset_all_calls();
+
+    STRICT_EXPECTED_CALL(uws_frame_encoder_encode(buffer_handle, WS_CLOSE_FRAME, IGNORED_PTR_ARG, sizeof(close_frame_payload), true, true, 0))
+        .ValidateArgumentBuffer(3, close_frame_payload, sizeof(close_frame_payload));
+    STRICT_EXPECTED_CALL(BUFFER_u_char(buffer_handle)).SetReturn(close_frame);
+    STRICT_EXPECTED_CALL(BUFFER_length(buffer_handle)).SetReturn(sizeof(close_frame));
+    STRICT_EXPECTED_CALL(xio_send(TEST_IO_HANDLE, close_frame, sizeof(close_frame), NULL, NULL))
+        .ValidateArgumentBuffer(2, close_frame, sizeof(close_frame));
+    STRICT_EXPECTED_CALL(singlylinkedlist_get_head_item(TEST_SINGLYLINKEDSINGLYLINKEDLIST_HANDLE));
+
+    // act
+    result = uws_client_close_handshake(uws_client, 1002, "", test_on_ws_close_complete, (void*)0x4445);
+
+    // assert
+    ASSERT_ARE_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    uws_client_destroy(uws_client);
+}
+
+/* Tests_SRS_UWS_CLIENT_01_467: [ if `uws_client` is NULL, `uws_client_close_handshake` shall return a non-zero value. ]*/
+TEST_FUNCTION(uws_client_close_handshake_with_NULL_handle_fails)
+{
+    // arrange
+    int result;
+
+    // act
+    result = uws_client_close_handshake(NULL, 1002, "", test_on_ws_close_complete, NULL);
+
+    // assert
+    ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+}
+
+/* Tests_SRS_UWS_CLIENT_01_469: [ The `on_ws_close_complete` argument shall be allowed to be NULL, in which case no callback shall be called when the close is complete. ]*/
+/* Tests_SRS_UWS_CLIENT_01_471: [ The callback `on_underlying_io_close_sent` shall be passed as argument to `xio_send`. ]*/
+TEST_FUNCTION(uws_client_close_handshake_with_NULL_close_complete_callback_is_allowed)
+{
+    // arrange
+    TLSIO_CONFIG tlsio_config;
+    int result;
+    UWS_CLIENT_HANDLE uws_client;
+    const char test_upgrade_response[] = "HTTP/1.1 101 Switching Protocols\r\n\r\n";
+    unsigned char close_frame_payload[] = { 0x03, 0xEA };
+    unsigned char close_frame[] = { 0x88, 0x82, 0x00, 0x00, 0x00, 0x00, 0x03, 0xEA };
+    BUFFER_HANDLE buffer_handle;
+
+    tlsio_config.hostname = "test_host";
+    tlsio_config.port = 444;
+
+    EXPECTED_CALL(gballoc_malloc(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(BUFFER_new())
+        .CaptureReturn(&buffer_handle);
+
+    uws_client = uws_client_create("test_host", 444, "/aaa", true, protocols, sizeof(protocols) / sizeof(protocols[0]));
+    (void)uws_client_open(uws_client, test_on_ws_open_complete, (void*)0x4242, test_on_ws_frame_received, (void*)0x4243, test_on_ws_peer_closed, (void*)0x4301, test_on_ws_error, (void*)0x4244);
+    g_on_io_open_complete(g_on_io_open_complete_context, IO_OPEN_OK);
+    g_on_bytes_received(g_on_bytes_received_context, (const unsigned char*)test_upgrade_response, sizeof(test_upgrade_response) - 1);
+    umock_c_reset_all_calls();
+
+    STRICT_EXPECTED_CALL(uws_frame_encoder_encode(buffer_handle, WS_CLOSE_FRAME, IGNORED_PTR_ARG, sizeof(close_frame_payload), true, true, 0))
+        .ValidateArgumentBuffer(3, close_frame_payload, sizeof(close_frame_payload));
+    STRICT_EXPECTED_CALL(BUFFER_u_char(buffer_handle)).SetReturn(close_frame);
+    STRICT_EXPECTED_CALL(BUFFER_length(buffer_handle)).SetReturn(sizeof(close_frame));
+    STRICT_EXPECTED_CALL(xio_send(TEST_IO_HANDLE, close_frame, sizeof(close_frame), NULL, NULL))
+        .ValidateArgumentBuffer(2, close_frame, sizeof(close_frame));
+    STRICT_EXPECTED_CALL(singlylinkedlist_get_head_item(TEST_SINGLYLINKEDSINGLYLINKEDLIST_HANDLE));
+
+    // act
+    result = uws_client_close_handshake(uws_client, 1002, "", NULL, NULL);
+
+    // assert
+    ASSERT_ARE_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    uws_client_destroy(uws_client);
+}
+
+/* Tests_SRS_UWS_CLIENT_01_470: [ `on_ws_close_complete_context` shall also be allowed to be NULL. ]*/
+TEST_FUNCTION(uws_client_close_handshake_with_NULL_context_is_allowed)
+{
+    // arrange
+    TLSIO_CONFIG tlsio_config;
+    int result;
+    UWS_CLIENT_HANDLE uws_client;
+    const char test_upgrade_response[] = "HTTP/1.1 101 Switching Protocols\r\n\r\n";
+    unsigned char close_frame_payload[] = { 0x03, 0xEA };
+    unsigned char close_frame[] = { 0x88, 0x82, 0x00, 0x00, 0x00, 0x00, 0x03, 0xEA };
+    BUFFER_HANDLE buffer_handle;
+
+    tlsio_config.hostname = "test_host";
+    tlsio_config.port = 444;
+
+    EXPECTED_CALL(gballoc_malloc(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(BUFFER_new())
+        .CaptureReturn(&buffer_handle);
+
+    uws_client = uws_client_create("test_host", 444, "/aaa", true, protocols, sizeof(protocols) / sizeof(protocols[0]));
+    (void)uws_client_open(uws_client, test_on_ws_open_complete, (void*)0x4242, test_on_ws_frame_received, (void*)0x4243, test_on_ws_peer_closed, (void*)0x4301, test_on_ws_error, (void*)0x4244);
+    g_on_io_open_complete(g_on_io_open_complete_context, IO_OPEN_OK);
+    g_on_bytes_received(g_on_bytes_received_context, (const unsigned char*)test_upgrade_response, sizeof(test_upgrade_response) - 1);
+    umock_c_reset_all_calls();
+
+    STRICT_EXPECTED_CALL(uws_frame_encoder_encode(buffer_handle, WS_CLOSE_FRAME, IGNORED_PTR_ARG, sizeof(close_frame_payload), true, true, 0))
+        .ValidateArgumentBuffer(3, close_frame_payload, sizeof(close_frame_payload));
+    STRICT_EXPECTED_CALL(BUFFER_u_char(buffer_handle)).SetReturn(close_frame);
+    STRICT_EXPECTED_CALL(BUFFER_length(buffer_handle)).SetReturn(sizeof(close_frame));
+    STRICT_EXPECTED_CALL(xio_send(TEST_IO_HANDLE, close_frame, sizeof(close_frame), NULL, NULL))
+        .ValidateArgumentBuffer(2, close_frame, sizeof(close_frame));
+    STRICT_EXPECTED_CALL(singlylinkedlist_get_head_item(TEST_SINGLYLINKEDSINGLYLINKEDLIST_HANDLE));
+
+    // act
+    result = uws_client_close_handshake(uws_client, 1002, "", test_on_ws_close_complete, NULL);
+
+    // assert
+    ASSERT_ARE_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    uws_client_destroy(uws_client);
+}
+
+/* Tests_SRS_UWS_CLIENT_01_472: [ If `xio_send` fails, `uws_client_close_handshake` shall fail and return a non-zero value. ]*/
+TEST_FUNCTION(when_xio_send_fails_uws_client_close_handshake_fails)
+{
+    // arrange
+    TLSIO_CONFIG tlsio_config;
+    int result;
+    UWS_CLIENT_HANDLE uws_client;
+    const char test_upgrade_response[] = "HTTP/1.1 101 Switching Protocols\r\n\r\n";
+    unsigned char close_frame_payload[] = { 0x03, 0xEA };
+    unsigned char close_frame[] = { 0x88, 0x82, 0x00, 0x00, 0x00, 0x00, 0x03, 0xEA };
+    BUFFER_HANDLE buffer_handle;
+
+    tlsio_config.hostname = "test_host";
+    tlsio_config.port = 444;
+
+    EXPECTED_CALL(gballoc_malloc(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(BUFFER_new())
+        .CaptureReturn(&buffer_handle);
+
+    uws_client = uws_client_create("test_host", 444, "/aaa", true, protocols, sizeof(protocols) / sizeof(protocols[0]));
+    (void)uws_client_open(uws_client, test_on_ws_open_complete, (void*)0x4242, test_on_ws_frame_received, (void*)0x4243, test_on_ws_peer_closed, (void*)0x4301, test_on_ws_error, (void*)0x4244);
+    g_on_io_open_complete(g_on_io_open_complete_context, IO_OPEN_OK);
+    g_on_bytes_received(g_on_bytes_received_context, (const unsigned char*)test_upgrade_response, sizeof(test_upgrade_response) - 1);
+    umock_c_reset_all_calls();
+
+    STRICT_EXPECTED_CALL(uws_frame_encoder_encode(buffer_handle, WS_CLOSE_FRAME, IGNORED_PTR_ARG, sizeof(close_frame_payload), true, true, 0))
+        .ValidateArgumentBuffer(3, close_frame_payload, sizeof(close_frame_payload));
+    STRICT_EXPECTED_CALL(BUFFER_u_char(buffer_handle)).SetReturn(close_frame);
+    STRICT_EXPECTED_CALL(BUFFER_length(buffer_handle)).SetReturn(sizeof(close_frame));
+    STRICT_EXPECTED_CALL(xio_send(TEST_IO_HANDLE, close_frame, sizeof(close_frame), NULL, NULL))
+        .ValidateArgumentBuffer(2, close_frame, sizeof(close_frame))
+        .SetReturn(1);
+
+    // act
+    result = uws_client_close_handshake(uws_client, 1002, "", test_on_ws_close_complete, NULL);
+
+    // assert
+    ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    uws_client_destroy(uws_client);
+}
+
+/* Tests_SRS_UWS_CLIENT_01_473: [ `uws_client_close_handshake` when no open action has been issued shall fail and return a non-zero value. ]*/
+TEST_FUNCTION(uws_client_close_handshake_when_not_opened_fails)
+{
+    // arrange
+    TLSIO_CONFIG tlsio_config;
+    int result;
+    UWS_CLIENT_HANDLE uws_client;
+
+    tlsio_config.hostname = "test_host";
+    tlsio_config.port = 444;
+
+    uws_client = uws_client_create("test_host", 444, "/aaa", true, protocols, sizeof(protocols) / sizeof(protocols[0]));
+    umock_c_reset_all_calls();
+
+    // act
+    result = uws_client_close_handshake(uws_client, 1002, "", test_on_ws_close_complete, (void*)0x4445);
+
+    // assert
+    ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    uws_client_destroy(uws_client);
+}
+
+/* Tests_SRS_UWS_CLIENT_01_474: [ `uws_client_close_handshake` when already CLOSING shall fail and return a non-zero value. ]*/
+TEST_FUNCTION(uws_client_close_handshake_when_already_SENDING_CLOSE_frame_fails)
+{
+    // arrange
+    TLSIO_CONFIG tlsio_config;
+    int result;
+    UWS_CLIENT_HANDLE uws_client;
+    const char test_upgrade_response[] = "HTTP/1.1 101 Switching Protocols\r\n\r\n";
+    unsigned char close_frame[] = { 0x88, 0x02, 0x03, 0xEA };
+    BUFFER_HANDLE buffer_handle;
+
+    tlsio_config.hostname = "test_host";
+    tlsio_config.port = 444;
+
+    EXPECTED_CALL(gballoc_malloc(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(BUFFER_new())
+        .CaptureReturn(&buffer_handle);
+
+    uws_client = uws_client_create("test_host", 444, "/aaa", true, protocols, sizeof(protocols) / sizeof(protocols[0]));
+    (void)uws_client_open(uws_client, test_on_ws_open_complete, (void*)0x4242, test_on_ws_frame_received, (void*)0x4243, test_on_ws_peer_closed, (void*)0x4301, test_on_ws_error, (void*)0x4244);
+    g_on_io_open_complete(g_on_io_open_complete_context, IO_OPEN_OK);
+    g_on_bytes_received(g_on_bytes_received_context, (const unsigned char*)test_upgrade_response, sizeof(test_upgrade_response) - 1);
+    g_on_bytes_received(g_on_bytes_received_context, close_frame, sizeof(close_frame));
+    umock_c_reset_all_calls();
+
+    // act
+    result = uws_client_close_handshake(uws_client, 1002, "", test_on_ws_close_complete, NULL);
+
+    // assert
+    ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    uws_client_destroy(uws_client);
+}
+
+/* Tests_SRS_UWS_CLIENT_01_474: [ `uws_client_close_handshake` when already CLOSING shall fail and return a non-zero value. ]*/
+TEST_FUNCTION(uws_client_close_handshake_when_already_CLOSING_underlying_IO_fails)
+{
+    // arrange
+    TLSIO_CONFIG tlsio_config;
+    int result;
+    UWS_CLIENT_HANDLE uws_client;
+    const char test_upgrade_response[] = "HTTP/1.1 101 Switching Protocols\r\n\r\n";
+    unsigned char close_frame[] = { 0x88, 0x02, 0x03, 0xEA };
+    BUFFER_HANDLE buffer_handle;
+
+    tlsio_config.hostname = "test_host";
+    tlsio_config.port = 444;
+
+    EXPECTED_CALL(gballoc_malloc(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(BUFFER_new())
+        .CaptureReturn(&buffer_handle);
+
+    uws_client = uws_client_create("test_host", 444, "/aaa", true, protocols, sizeof(protocols) / sizeof(protocols[0]));
+    (void)uws_client_open(uws_client, test_on_ws_open_complete, (void*)0x4242, test_on_ws_frame_received, (void*)0x4243, test_on_ws_peer_closed, (void*)0x4301, test_on_ws_error, (void*)0x4244);
+    g_on_io_open_complete(g_on_io_open_complete_context, IO_OPEN_OK);
+    g_on_bytes_received(g_on_bytes_received_context, (const unsigned char*)test_upgrade_response, sizeof(test_upgrade_response) - 1);
+    g_on_bytes_received(g_on_bytes_received_context, close_frame, sizeof(close_frame));
+    g_on_io_send_complete(g_on_io_send_complete_context, IO_SEND_OK);
+    umock_c_reset_all_calls();
+
+    // act
+    result = uws_client_close_handshake(uws_client, 1002, "", test_on_ws_close_complete, NULL);
+
+    // assert
+    ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    uws_client_destroy(uws_client);
+}
+
 /* on_underlying_io_open_complete */
 
 /* Tests_SRS_UWS_CLIENT_01_369: [ When `on_underlying_io_open_complete` is called with `IO_OPEN_ERROR` while uws is OPENING (`uws_client_open` was called), uws shall report that the open failed by calling the `on_ws_open_complete` callback passed to `uws_client_open` with `WS_OPEN_ERROR_UNDERLYING_IO_OPEN_FAILED`. ]*/

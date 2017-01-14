@@ -175,22 +175,21 @@ XX**SRS_UWS_CLIENT_01_035: [** Obtaining the head of the pending send frames lis
 XX**SRS_UWS_CLIENT_01_036: [** For each pending send frame the send complete callback shall be called with `UWS_SEND_FRAME_CANCELLED`. **]**
 XX**SRS_UWS_CLIENT_01_037: [** When indicating pending send frames as cancelled the callback context passed to the `on_ws_send_frame_complete` callback shall be the context given to `uws_client_send_frame`. **]** 
 
-### uws_close_handshake
+### uws_client_close_handshake
 
 ```c
-extern int uws_close_handshake(UWS_CLIENT_HANDLE uws, uint16 close_code, const char* close_reason, ON_WS_CLOSE_COMPLETE on_ws_close_complete, void* on_ws_close_complete_context);
+extern int uws_client_close_handshake(UWS_CLIENT_HANDLE uws, uint16 close_code, const char* close_reason, ON_WS_CLOSE_COMPLETE on_ws_close_complete, void* on_ws_close_complete_context);
 ```
 
-**SRS_UWS_CLIENT_01_465: [** `uws_close_handshake` shall initiate the close handshake by sending a close frame to the peer. **]**
-**SRS_UWS_CLIENT_01_466: [** On success `uws_close_handshake` shall return 0. **]**
-**SRS_UWS_CLIENT_01_467: [** if `uws_client` is NULL, `uws_close_handshake` shall return a non-zero value. **]**
-**SRS_UWS_CLIENT_01_468: [** `on_ws_close_complete` and `on_ws_close_complete_context` shall be saved and the callback `on_ws_close_complete` shall be triggered when the close is complete. **]**
-**SRS_UWS_CLIENT_01_469: [** The `on_ws_close_complete` argument shall be allowed to be NULL, in which case no callback shall be called when the close is complete. **]**
-**SRS_UWS_CLIENT_01_470: [** `on_ws_close_complete_context` shall also be allowed to be NULL. **]**
-**SRS_UWS_CLIENT_01_471: [** The callback `on_underlying_io_close_sent` shall be passed as argument to `xio_send`. **]**
-**SRS_UWS_CLIENT_01_472: [** If `xio_send` fails, `uws_close_handshake` shall fail and return a non-zero value. **]**
-**SRS_UWS_CLIENT_01_473: [** `uws_close_handshake` when no open action has been issued shall fail and return a non-zero value. **]**
-**SRS_UWS_CLIENT_01_474: [** `uws_close_handshake` when already CLOSING shall fail and return a non-zero value. **]**
+XX**SRS_UWS_CLIENT_01_465: [** `uws_client_close_handshake` shall initiate the close handshake by sending a close frame to the peer. **]**
+XX**SRS_UWS_CLIENT_01_466: [** On success `uws_client_close_handshake` shall return 0. **]**
+XX**SRS_UWS_CLIENT_01_467: [** if `uws_client` is NULL, `uws_client_close_handshake` shall return a non-zero value. **]**
+XX**SRS_UWS_CLIENT_01_468: [** `on_ws_close_complete` and `on_ws_close_complete_context` shall be saved and the callback `on_ws_close_complete` shall be triggered when the close is complete. **]**
+XX**SRS_UWS_CLIENT_01_469: [** The `on_ws_close_complete` argument shall be allowed to be NULL, in which case no callback shall be called when the close is complete. **]**
+XX**SRS_UWS_CLIENT_01_470: [** `on_ws_close_complete_context` shall also be allowed to be NULL. **]**
+XX**SRS_UWS_CLIENT_01_472: [** If `xio_send` fails, `uws_client_close_handshake` shall fail and return a non-zero value. **]**
+XX**SRS_UWS_CLIENT_01_473: [** `uws_client_close_handshake` when no open action has been issued shall fail and return a non-zero value. **]**
+XX**SRS_UWS_CLIENT_01_474: [** `uws_client_close_handshake` when already CLOSING shall fail and return a non-zero value. **]**
 
 ### uws_client_send_frame
 
@@ -317,9 +316,10 @@ XX**SRS_UWS_CLIENT_01_436: [** When `on_underlying_io_send_complete` is called w
 ### on_underlying_io_close_sent
 
 XX**SRS_UWS_CLIENT_01_489: [** When `on_underlying_io_close_sent` is called with NULL context, it shall do nothing. **]**
-**SRS_UWS_CLIENT_01_490: [** When `on_underlying_io_close_sent` is called while the uws client is CLOSING, `on_underlying_io_close_sent` shall close the underlying IO by calling `xio_close`. **]**
+XX**SRS_UWS_CLIENT_01_490: [** When `on_underlying_io_close_sent` is called while the uws client is CLOSING, `on_underlying_io_close_sent` shall close the underlying IO by calling `xio_close`. **]**
 **SRS_UWS_CLIENT_01_493: [** If calling `xio_close` fails, the state of the uws client shall be considered CLOSED and the `on_ws_close_complete` shall be called if it was specified. **]**
 **SRS_UWS_CLIENT_01_491: [** When calling `on_ws_close_complete` callback, the `on_ws_close_complete_context` argument shall be passed to it. **]**
+XX**SRS_UWS_CLIENT_01_496: [** If the close was initiated by the peer no `on_ws_close_complete` shall be called. **]**
 
 ### RFC6455
 
