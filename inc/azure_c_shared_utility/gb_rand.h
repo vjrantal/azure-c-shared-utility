@@ -6,6 +6,10 @@
 
 #include "azure_c_shared_utility/umock_c_prod.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 MOCKABLE_FUNCTION(, int, gb_rand);
 
 #ifdef __cplusplus

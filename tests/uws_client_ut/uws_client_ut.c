@@ -57,6 +57,8 @@ Tests_SRS_UWS_CLIENT_01_238: [ As the data is not guaranteed to be human readabl
 #include "azure_c_shared_utility/singlylinkedlist.h"
 #include "azure_c_shared_utility/tlsio.h"
 #include "azure_c_shared_utility/uws_frame_encoder.h"
+#include "azure_c_shared_utility/gb_rand.h"
+#include "azure_c_shared_utility/base64.h"
 
 TEST_DEFINE_ENUM_TYPE(IO_OPEN_RESULT, IO_OPEN_RESULT_VALUES);
 IMPLEMENT_UMOCK_C_ENUM_TYPE(IO_OPEN_RESULT, IO_OPEN_RESULT_VALUES);
@@ -69,6 +71,7 @@ static const SINGLYLINKEDLIST_HANDLE TEST_SINGLYLINKEDSINGLYLINKEDLIST_HANDLE = 
 static const LIST_ITEM_HANDLE TEST_LIST_ITEM_HANDLE = (LIST_ITEM_HANDLE)0x4243;
 static const XIO_HANDLE TEST_IO_HANDLE = (XIO_HANDLE)0x4244;
 static const OPTIONHANDLER_HANDLE TEST_OPTIONHANDLER_HANDLE = (OPTIONHANDLER_HANDLE)0x4446;
+static const STRING_HANDLE BASE64_ENCODED_STRING = (STRING_HANDLE)0x4447;
 
 static size_t currentmalloc_call;
 static size_t whenShallmalloc_fail;
@@ -204,6 +207,7 @@ LIST_ITEM_HANDLE my_singlylinkedlist_find(SINGLYLINKEDLIST_HANDLE handle, LIST_M
 #include "azure_c_shared_utility/socketio.h"
 #include "azure_c_shared_utility/platform.h"
 #include "azure_c_shared_utility/utf8_checker.h"
+#include "azure_c_shared_utility/strings.h"
 
 #undef ENABLE_MOCKS
 
@@ -431,6 +435,7 @@ TEST_SUITE_INITIALIZE(suite_init)
     REGISTER_GLOBAL_MOCK_RETURN(xio_create, TEST_IO_HANDLE);
     REGISTER_GLOBAL_MOCK_RETURN(xio_retrieveoptions, TEST_OPTIONHANDLER_HANDLE);
     REGISTER_GLOBAL_MOCK_RETURN(utf8_checker_is_valid_utf8, true);
+    REGISTER_GLOBAL_MOCK_RETURN(Base64_Encode_Bytes, BASE64_ENCODED_STRING);
     REGISTER_GLOBAL_MOCK_HOOK(BUFFER_new, real_BUFFER_new);
     REGISTER_GLOBAL_MOCK_HOOK(BUFFER_delete, real_BUFFER_delete);
     REGISTER_GLOBAL_MOCK_HOOK(BUFFER_u_char, real_BUFFER_u_char);
@@ -455,6 +460,7 @@ TEST_SUITE_INITIALIZE(suite_init)
     REGISTER_UMOCK_ALIAS_TYPE(ON_WS_FRAME_DECODED, void*);
     REGISTER_UMOCK_ALIAS_TYPE(BUFFER_HANDLE, void*);
     REGISTER_UMOCK_ALIAS_TYPE(OPTIONHANDLER_HANDLE, void*);
+    REGISTER_UMOCK_ALIAS_TYPE(STRING_HANDLE, void*);
 }
 
 TEST_SUITE_CLEANUP(suite_cleanup)
@@ -1656,6 +1662,36 @@ TEST_FUNCTION(uws_client_open_while_closing_fails)
     uws_client_destroy(uws_client);
 }
 
+/* Tests_SRS_UWS_CLIENT_01_400: [ `uws_client_open` while CLOSING shall fail and return a non-zero value. ]*/
+TEST_FUNCTION(uws_client_open_while_waiting_for_CLOSE_frame_fails)
+{
+    // arrange
+    TLSIO_CONFIG tlsio_config;
+    int result;
+    UWS_CLIENT_HANDLE uws_client;
+    const char test_upgrade_response[] = "HTTP/1.1 101 Switching Protocols\r\n\r\n";
+
+    tlsio_config.hostname = "test_host";
+    tlsio_config.port = 444;
+
+    uws_client = uws_client_create("test_host", 444, "/aaa", true, protocols, sizeof(protocols) / sizeof(protocols[0]));
+    (void)uws_client_open(uws_client, test_on_ws_open_complete, (void*)0x4242, test_on_ws_frame_received, (void*)0x4243, test_on_ws_peer_closed, (void*)0x4301, test_on_ws_error, (void*)0x4244);
+    g_on_io_open_complete(g_on_io_open_complete_context, IO_OPEN_OK);
+    g_on_bytes_received(g_on_bytes_received_context, (const unsigned char*)test_upgrade_response, sizeof(test_upgrade_response) - 1);
+    (void)uws_client_close_handshake(uws_client, 1002, "", test_on_ws_close_complete, NULL);
+    umock_c_reset_all_calls();
+
+    // act
+    result = uws_client_open(uws_client, test_on_ws_open_complete, (void*)0x4242, test_on_ws_frame_received, (void*)0x4243, test_on_ws_peer_closed, (void*)0x4301, test_on_ws_error, (void*)0x4244);
+
+    // assert
+    ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    uws_client_destroy(uws_client);
+}
+
 /* uws_client_close */
 
 /* Tests_SRS_UWS_CLIENT_01_029: [ `uws_client_close` shall close the uws instance connection if an open action is either pending or has completed successfully (if the IO is open). ]*/
@@ -2513,11 +2549,16 @@ TEST_FUNCTION(uws_client_open_after_WS_OPEN_ERROR_UNDERLYING_IO_OPEN_CANCELLED_s
 /* Tests_SRS_UWS_CLIENT_01_095: [ The value of this header field MUST be 13. ]*/
 /* Tests_SRS_UWS_CLIENT_01_096: [ The request MAY include a header field with the name |Sec-WebSocket-Protocol|. ]*/
 /* Tests_SRS_UWS_CLIENT_01_100: [ The request MAY include a header field with the name |Sec-WebSocket-Extensions|. ]*/
+/* Tests_SRS_UWS_CLIENT_01_089: [ The value of this header field MUST be a nonce consisting of a randomly selected 16-byte value that has been base64-encoded (see Section 4 of [RFC4648]). ]*/
+/* Tests_SRS_UWS_CLIENT_01_090: [ The nonce MUST be selected randomly for each connection. ]*/
+/* Tests_SRS_UWS_CLIENT_01_497: [ The nonce needed for the upgrade request shall be Base64 encoded with `Base64_Encode_Bytes`. ]*/
 TEST_FUNCTION(on_underlying_io_open_complete_with_OK_prepares_and_sends_the_WebSocket_upgrade_request)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
     UWS_CLIENT_HANDLE uws_client;
+    size_t i;
+    unsigned char expected_nonce[16];
 
     tlsio_config.hostname = "test_host";
     tlsio_config.port = 444;
@@ -2526,6 +2567,16 @@ TEST_FUNCTION(on_underlying_io_open_complete_with_OK_prepares_and_sends_the_WebS
     (void)uws_client_open(uws_client, test_on_ws_open_complete, (void*)0x4242, test_on_ws_frame_received, (void*)0x4243, test_on_ws_peer_closed, (void*)0x4301, test_on_ws_error, (void*)0x4244);
     umock_c_reset_all_calls();
 
+    /* get the random 16 bytes */
+    for (i = 0; i < 16; i++)
+    {
+        EXPECTED_CALL(gb_rand()).SetReturn(i);
+        expected_nonce[i] = (unsigned char)i;
+    }
+
+    STRICT_EXPECTED_CALL(Base64_Encode_Bytes(IGNORED_PTR_ARG, 16))
+        .ValidateArgumentBuffer(1, expected_nonce, 16);
+    STRICT_EXPECTED_CALL(STRING_c_str(BASE64_ENCODED_STRING)).SetReturn("ZWRuYW1vZGU6bm9jYXBlcyE=");
     EXPECTED_CALL(gballoc_malloc(IGNORED_NUM_ARG));
     STRICT_EXPECTED_CALL(xio_send(TEST_IO_HANDLE, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG))
         .IgnoreArgument_on_send_complete()
@@ -2533,6 +2584,45 @@ TEST_FUNCTION(on_underlying_io_open_complete_with_OK_prepares_and_sends_the_WebS
         .IgnoreArgument_buffer()
         .IgnoreArgument_size();
     EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(STRING_delete(BASE64_ENCODED_STRING));
+
+    // act
+    g_on_io_open_complete(g_on_io_open_complete_context, IO_OPEN_OK);
+
+    // assert
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    uws_client_destroy(uws_client);
+}
+
+/* Tests_SRS_UWS_CLIENT_01_498: [ If Base64 encoding the nonce for the upgrade request fails, then the uws client shall report that the open failed by calling the `on_ws_open_complete` callback passed to `uws_client_open` with `WS_OPEN_ERROR_BASE64_ENCODE_FAILED`. ]*/
+TEST_FUNCTION(when_base64_encode_fails_on_underlying_io_open_complete_triggers_the_error_WS_OPEN_ERROR_BASE64_ENCODE_FAILED)
+{
+    // arrange
+    TLSIO_CONFIG tlsio_config;
+    UWS_CLIENT_HANDLE uws_client;
+    size_t i;
+    unsigned char expected_nonce[16];
+
+    tlsio_config.hostname = "test_host";
+    tlsio_config.port = 444;
+
+    uws_client = uws_client_create("test_host", 444, "/aaa", true, protocols, sizeof(protocols) / sizeof(protocols[0]));
+    (void)uws_client_open(uws_client, test_on_ws_open_complete, (void*)0x4242, test_on_ws_frame_received, (void*)0x4243, test_on_ws_peer_closed, (void*)0x4301, test_on_ws_error, (void*)0x4244);
+    umock_c_reset_all_calls();
+
+    /* get the random 16 bytes */
+    for (i = 0; i < 16; i++)
+    {
+        EXPECTED_CALL(gb_rand()).SetReturn(i);
+        expected_nonce[i] = (unsigned char)i;
+    }
+
+    STRICT_EXPECTED_CALL(Base64_Encode_Bytes(IGNORED_PTR_ARG, 16))
+        .ValidateArgumentBuffer(1, expected_nonce, 16)
+        .SetReturn(NULL);
+    STRICT_EXPECTED_CALL(test_on_ws_open_complete((void*)0x4242, WS_OPEN_ERROR_BASE64_ENCODE_FAILED));
 
     // act
     g_on_io_open_complete(g_on_io_open_complete_context, IO_OPEN_OK);
@@ -2550,6 +2640,8 @@ TEST_FUNCTION(when_allocating_memory_for_the_websocket_upgrade_request_fails_the
     // arrange
     TLSIO_CONFIG tlsio_config;
     UWS_CLIENT_HANDLE uws_client;
+    size_t i;
+    unsigned char expected_nonce[16];
 
     tlsio_config.hostname = "test_host";
     tlsio_config.port = 444;
@@ -2558,10 +2650,21 @@ TEST_FUNCTION(when_allocating_memory_for_the_websocket_upgrade_request_fails_the
     (void)uws_client_open(uws_client, test_on_ws_open_complete, (void*)0x4242, test_on_ws_frame_received, (void*)0x4243, test_on_ws_peer_closed, (void*)0x4301, test_on_ws_error, (void*)0x4244);
     umock_c_reset_all_calls();
 
+    /* get the random 16 bytes */
+    for (i = 0; i < 16; i++)
+    {
+        EXPECTED_CALL(gb_rand()).SetReturn(i);
+        expected_nonce[i] = (unsigned char)i;
+    }
+
+    STRICT_EXPECTED_CALL(Base64_Encode_Bytes(IGNORED_PTR_ARG, 16))
+        .ValidateArgumentBuffer(1, expected_nonce, 16);
+    STRICT_EXPECTED_CALL(STRING_c_str(BASE64_ENCODED_STRING)).SetReturn("ZWRuYW1vZGU6bm9jYXBlcyE=");
     EXPECTED_CALL(gballoc_malloc(IGNORED_NUM_ARG))
         .SetReturn(NULL);
     STRICT_EXPECTED_CALL(test_on_ws_open_complete((void*)0x4242, WS_OPEN_ERROR_NOT_ENOUGH_MEMORY));
     STRICT_EXPECTED_CALL(xio_close(TEST_IO_HANDLE, NULL, NULL));
+    STRICT_EXPECTED_CALL(STRING_delete(BASE64_ENCODED_STRING));
 
     // act
     g_on_io_open_complete(g_on_io_open_complete_context, IO_OPEN_OK);
@@ -2580,6 +2683,8 @@ TEST_FUNCTION(uws_client_open_after_WS_OPEN_ERROR_NOT_ENOUGH_MEMORY_succeeds)
     TLSIO_CONFIG tlsio_config;
     UWS_CLIENT_HANDLE uws_client;
     int result;
+    size_t i;
+    unsigned char expected_nonce[16];
 
     tlsio_config.hostname = "test_host";
     tlsio_config.port = 444;
@@ -2588,6 +2693,15 @@ TEST_FUNCTION(uws_client_open_after_WS_OPEN_ERROR_NOT_ENOUGH_MEMORY_succeeds)
     (void)uws_client_open(uws_client, test_on_ws_open_complete, (void*)0x4242, test_on_ws_frame_received, (void*)0x4243, test_on_ws_peer_closed, (void*)0x4301, test_on_ws_error, (void*)0x4244);
     umock_c_reset_all_calls();
 
+    /* get the random 16 bytes */
+    for (i = 0; i < 16; i++)
+    {
+        EXPECTED_CALL(gb_rand()).SetReturn(i);
+        expected_nonce[i] = (unsigned char)i;
+    }
+
+    STRICT_EXPECTED_CALL(Base64_Encode_Bytes(IGNORED_PTR_ARG, 16))
+        .ValidateArgumentBuffer(1, expected_nonce, 16);
     EXPECTED_CALL(gballoc_malloc(IGNORED_NUM_ARG))
         .SetReturn(NULL);
     STRICT_EXPECTED_CALL(test_on_ws_open_complete((void*)0x4242, WS_OPEN_ERROR_NOT_ENOUGH_MEMORY));
@@ -2620,6 +2734,8 @@ TEST_FUNCTION(when_sending_the_upgrade_request_fails_the_error_WS_OPEN_ERROR_CAN
     // arrange
     TLSIO_CONFIG tlsio_config;
     UWS_CLIENT_HANDLE uws_client;
+    size_t i;
+    unsigned char expected_nonce[16];
 
     tlsio_config.hostname = "test_host";
     tlsio_config.port = 444;
@@ -2628,6 +2744,16 @@ TEST_FUNCTION(when_sending_the_upgrade_request_fails_the_error_WS_OPEN_ERROR_CAN
     (void)uws_client_open(uws_client, test_on_ws_open_complete, (void*)0x4242, test_on_ws_frame_received, (void*)0x4243, test_on_ws_peer_closed, (void*)0x4301, test_on_ws_error, (void*)0x4244);
     umock_c_reset_all_calls();
 
+    /* get the random 16 bytes */
+    for (i = 0; i < 16; i++)
+    {
+        EXPECTED_CALL(gb_rand()).SetReturn(i);
+        expected_nonce[i] = (unsigned char)i;
+    }
+
+    STRICT_EXPECTED_CALL(Base64_Encode_Bytes(IGNORED_PTR_ARG, 16))
+        .ValidateArgumentBuffer(1, expected_nonce, 16);
+    STRICT_EXPECTED_CALL(STRING_c_str(BASE64_ENCODED_STRING)).SetReturn("ZWRuYW1vZGU6bm9jYXBlcyE=");
     EXPECTED_CALL(gballoc_malloc(IGNORED_NUM_ARG));
     STRICT_EXPECTED_CALL(xio_send(TEST_IO_HANDLE, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG))
         .IgnoreArgument_on_send_complete()
@@ -2638,6 +2764,7 @@ TEST_FUNCTION(when_sending_the_upgrade_request_fails_the_error_WS_OPEN_ERROR_CAN
     STRICT_EXPECTED_CALL(test_on_ws_open_complete((void*)0x4242, WS_OPEN_ERROR_CANNOT_SEND_UPGRADE_REQUEST));
     STRICT_EXPECTED_CALL(xio_close(TEST_IO_HANDLE, NULL, NULL));
     EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(STRING_delete(BASE64_ENCODED_STRING));
 
     // act
     g_on_io_open_complete(g_on_io_open_complete_context, IO_OPEN_OK);
@@ -2656,6 +2783,8 @@ TEST_FUNCTION(uws_client_open_after_WS_OPEN_ERROR_CANNOT_SEND_UPGRADE_REQUEST_su
     TLSIO_CONFIG tlsio_config;
     UWS_CLIENT_HANDLE uws_client;
     int result;
+    size_t i;
+    unsigned char expected_nonce[16];
 
     tlsio_config.hostname = "test_host";
     tlsio_config.port = 444;
@@ -2664,6 +2793,16 @@ TEST_FUNCTION(uws_client_open_after_WS_OPEN_ERROR_CANNOT_SEND_UPGRADE_REQUEST_su
     (void)uws_client_open(uws_client, test_on_ws_open_complete, (void*)0x4242, test_on_ws_frame_received, (void*)0x4243, test_on_ws_peer_closed, (void*)0x4301, test_on_ws_error, (void*)0x4244);
     umock_c_reset_all_calls();
 
+    /* get the random 16 bytes */
+    for (i = 0; i < 16; i++)
+    {
+        EXPECTED_CALL(gb_rand()).SetReturn(i);
+        expected_nonce[i] = (unsigned char)i;
+    }
+
+    STRICT_EXPECTED_CALL(Base64_Encode_Bytes(IGNORED_PTR_ARG, 16))
+        .ValidateArgumentBuffer(1, expected_nonce, 16);
+    STRICT_EXPECTED_CALL(STRING_c_str(BASE64_ENCODED_STRING)).SetReturn("ZWRuYW1vZGU6bm9jYXBlcyE=");
     EXPECTED_CALL(gballoc_malloc(IGNORED_NUM_ARG));
     STRICT_EXPECTED_CALL(xio_send(TEST_IO_HANDLE, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG))
         .IgnoreArgument_on_send_complete()
@@ -5608,7 +5747,7 @@ TEST_FUNCTION(on_underlying_io_error_while_OPEN_indicates_an_error)
     uws_client_destroy(uws_client);
 }
 
-/* Tests_SRS_UWS_CLIENT_01_377: [ When `on_underlying_io_error` is called while the uws instance is CLOSING shall indicate the error by calling the `on_ws_close_complete` callback and then it shall set the uws client in the CLOSED state. ]*/
+/* Tests_SRS_UWS_CLIENT_01_377: [ When `on_underlying_io_error` is called while the uws instance is CLOSING the underlying IO shall be closed by calling `xio_close`. ]*/
 TEST_FUNCTION(on_underlying_io_error_while_CLOSING_indicates_an_error)
 {
     // arrange
@@ -5627,7 +5766,6 @@ TEST_FUNCTION(on_underlying_io_error_while_CLOSING_indicates_an_error)
     g_on_bytes_received(g_on_bytes_received_context, close_frame, sizeof(close_frame));
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(test_on_ws_error((void*)0x4244, WS_ERROR_UNDERLYING_IO_ERROR));
     STRICT_EXPECTED_CALL(xio_close(TEST_IO_HANDLE, NULL, NULL));
 
     // act
@@ -5640,7 +5778,7 @@ TEST_FUNCTION(on_underlying_io_error_while_CLOSING_indicates_an_error)
     uws_client_destroy(uws_client);
 }
 
-/* Tests_SRS_UWS_CLIENT_01_377: [ When `on_underlying_io_error` is called while the uws instance is CLOSING shall indicate the error by calling the `on_ws_close_complete` callback and then it shall set the uws client in the CLOSED state. ]*/
+/* Tests_SRS_UWS_CLIENT_01_377: [ When `on_underlying_io_error` is called while the uws instance is CLOSING the underlying IO shall be closed by calling `xio_close`. ]*/
 TEST_FUNCTION(open_after_error_during_sending_close_succeeds)
 {
     // arrange
@@ -5680,8 +5818,9 @@ TEST_FUNCTION(open_after_error_during_sending_close_succeeds)
     uws_client_destroy(uws_client);
 }
 
-/* Tests_SRS_UWS_CLIENT_01_377: [ When `on_underlying_io_error` is called while the uws instance is CLOSING shall indicate the error by calling the `on_ws_close_complete` callback and then it shall set the uws client in the CLOSED state. ]*/
-TEST_FUNCTION(on_underlying_io_error_while_CLOSING_underlying_io_indicates_an_error)
+/* Tests_SRS_UWS_CLIENT_01_377: [ When `on_underlying_io_error` is called while the uws instance is CLOSING the underlying IO shall be closed by calling `xio_close`. ]*/
+/* Tests_SRS_UWS_CLIENT_01_499: [ If the CLOSE was due to the peer closing, the callback `on_ws_close_complete` shall not be called. ]*/
+TEST_FUNCTION(on_underlying_io_error_while_CLOSING_underlying_io_indicates_the_close)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -5700,7 +5839,6 @@ TEST_FUNCTION(on_underlying_io_error_while_CLOSING_underlying_io_indicates_an_er
     g_on_io_send_complete(g_on_io_send_complete_context, IO_SEND_OK);
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(test_on_ws_error((void*)0x4244, WS_ERROR_UNDERLYING_IO_ERROR));
     STRICT_EXPECTED_CALL(xio_close(TEST_IO_HANDLE, IGNORED_PTR_ARG, IGNORED_PTR_ARG))
         .IgnoreArgument_callback_context()
         .IgnoreArgument_on_io_close_complete();
@@ -5715,7 +5853,7 @@ TEST_FUNCTION(on_underlying_io_error_while_CLOSING_underlying_io_indicates_an_er
     uws_client_destroy(uws_client);
 }
 
-/* Tests_SRS_UWS_CLIENT_01_377: [ When `on_underlying_io_error` is called while the uws instance is CLOSING shall indicate the error by calling the `on_ws_close_complete` callback and then it shall set the uws client in the CLOSED state. ]*/
+/* Tests_SRS_UWS_CLIENT_01_377: [ When `on_underlying_io_error` is called while the uws instance is CLOSING the underlying IO shall be closed by calling `xio_close`. ]*/
 TEST_FUNCTION(open_after_error_during_closing_underlying_io_succeeds)
 {
     // arrange
@@ -5750,6 +5888,41 @@ TEST_FUNCTION(open_after_error_during_closing_underlying_io_succeeds)
 
     // assert
     ASSERT_ARE_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    uws_client_destroy(uws_client);
+}
+
+/* Tests_SRS_UWS_CLIENT_01_500: [ If `xio_close` fails then the callback `on_ws_close_complete` shall be called, while passing the `on_ws_close_complete_context` argument to it. ]*/
+/* Tests_SRS_UWS_CLIENT_01_500: [ The callback `on_ws_close_complete` shall be called, while passing the `on_ws_close_complete_context` argument to it. ]*/
+TEST_FUNCTION(on_underlying_io_error_while_CLOSING_due_to_local_initiated_close)
+{
+    // arrange
+    TLSIO_CONFIG tlsio_config;
+    UWS_CLIENT_HANDLE uws_client;
+    const char test_upgrade_response[] = "HTTP/1.1 101 Switching Protocols\r\n\r\n";
+
+    tlsio_config.hostname = "test_host";
+    tlsio_config.port = 444;
+
+    uws_client = uws_client_create("test_host", 444, "/aaa", true, protocols, sizeof(protocols) / sizeof(protocols[0]));
+    (void)uws_client_open(uws_client, test_on_ws_open_complete, (void*)0x4242, test_on_ws_frame_received, (void*)0x4243, test_on_ws_peer_closed, (void*)0x4301, test_on_ws_error, (void*)0x4244);
+    g_on_io_open_complete(g_on_io_open_complete_context, IO_OPEN_OK);
+    g_on_bytes_received(g_on_bytes_received_context, (const unsigned char*)test_upgrade_response, sizeof(test_upgrade_response) - 1);
+    (void)uws_client_close_handshake(uws_client, 1002, "", test_on_ws_close_complete, (void*)0x6666);
+    umock_c_reset_all_calls();
+
+    STRICT_EXPECTED_CALL(xio_close(TEST_IO_HANDLE, IGNORED_PTR_ARG, IGNORED_PTR_ARG))
+        .IgnoreArgument_on_io_close_complete()
+        .IgnoreArgument_callback_context()
+        .SetReturn(1);
+    STRICT_EXPECTED_CALL(test_on_ws_close_complete((void*)0x6666));
+
+    // act
+    g_on_io_error(g_on_io_error_context);
+
+    // assert
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup

@@ -20,6 +20,8 @@
 #include "azure_c_shared_utility/uws_frame_encoder.h"
 #include "azure_c_shared_utility/crt_abstractions.h"
 #include "azure_c_shared_utility/utf8_checker.h"
+#include "azure_c_shared_utility/gb_rand.h"
+#include "azure_c_shared_utility/base64.h"
 
 /* Requirements not needed as they are optional:
 Codes_SRS_UWS_CLIENT_01_254: [ If an endpoint receives a Ping frame and has not yet sent Pong frame(s) in response to previous Ping frame(s), the endpoint MAY elect to send a Pong frame for only the most recently processed Ping frame. ]
@@ -493,83 +495,110 @@ static void on_underlying_io_open_complete(void* context, IO_OPEN_RESULT open_re
                 /* Codes_SRS_UWS_CLIENT_01_369: [ When `on_underlying_io_open_complete` is called with `IO_OPEN_ERROR` while uws is OPENING (`uws_client_open` was called), uws shall report that the open failed by calling the `on_ws_open_complete` callback passed to `uws_client_open` with `WS_OPEN_ERROR_UNDERLYING_IO_OPEN_FAILED`. ]*/
                 indicate_ws_open_complete_error(uws_client, WS_OPEN_ERROR_UNDERLYING_IO_OPEN_FAILED);
                 break;
+
             case IO_OPEN_CANCELLED:
                 /* Codes_SRS_UWS_CLIENT_01_402: [ When `on_underlying_io_open_complete` is called with `IO_OPEN_CANCELLED` while uws is OPENING (`uws_client_open` was called), uws shall report that the open failed by calling the `on_ws_open_complete` callback passed to `uws_client_open` with `WS_OPEN_ERROR_UNDERLYING_IO_OPEN_CANCELLED`. ]*/
                 indicate_ws_open_complete_error(uws_client, WS_OPEN_ERROR_UNDERLYING_IO_OPEN_CANCELLED);
                 break;
+
             case IO_OPEN_OK:
             {
                 int upgrade_request_length;
                 char* upgrade_request;
+                size_t i;
+                unsigned char nonce[16];
+                STRING_HANDLE base64_nonce;
 
-                /* Codes_SRS_UWS_CLIENT_01_371: [ When `on_underlying_io_open_complete` is called with `IO_OPEN_OK` while uws is OPENING (`uws_client_open` was called), uws shall prepare the WebSockets upgrade request. ]*/
-                /* Codes_SRS_UWS_CLIENT_01_081: [ The handshake consists of an HTTP Upgrade request, along with a list of required and optional header fields. ]*/
-                /* Codes_SRS_UWS_CLIENT_01_082: [ The handshake MUST be a valid HTTP request as specified by [RFC2616]. ]*/
-                /* Codes_SRS_UWS_CLIENT_01_083: [ The method of the request MUST be GET, and the HTTP version MUST be at least 1.1. ]*/
-                /* Codes_SRS_UWS_CLIENT_01_084: [ The "Request-URI" part of the request MUST match the /resource name/ defined in Section 3 (a relative URI) or be an absolute http/https URI that, when parsed, has a /resource name/, /host/, and /port/ that match the corresponding ws/wss URI. ]*/
-                /* Codes_SRS_UWS_CLIENT_01_085: [ The request MUST contain a |Host| header field whose value contains /host/ plus optionally ":" followed by /port/ (when not using the default port). ]*/
-                /* Codes_SRS_UWS_CLIENT_01_086: [ The request MUST contain an |Upgrade| header field whose value MUST include the "websocket" keyword. ]*/
-                /* Codes_SRS_UWS_CLIENT_01_087: [ The request MUST contain a |Connection| header field whose value MUST include the "Upgrade" token. ]*/
-                /* Codes_SRS_UWS_CLIENT_01_088: [ The request MUST include a header field with the name |Sec-WebSocket-Key|. ]*/
-                /* Codes_SRS_UWS_CLIENT_01_094: [ The request MUST include a header field with the name |Sec-WebSocket-Version|. ]*/
-                /* Codes_SRS_UWS_CLIENT_01_095: [ The value of this header field MUST be 13. ]*/
-                /* Codes_SRS_UWS_CLIENT_01_096: [ The request MAY include a header field with the name |Sec-WebSocket-Protocol|. ]*/
-                /* Codes_SRS_UWS_CLIENT_01_100: [ The request MAY include a header field with the name |Sec-WebSocket-Extensions|. ]*/
                 /* Codes_SRS_UWS_CLIENT_01_089: [ The value of this header field MUST be a nonce consisting of a randomly selected 16-byte value that has been base64-encoded (see Section 4 of [RFC4648]). ]*/
-                const char upgrade_request_format[] = "GET %s HTTP/1.1\r\n"
-                    "Host: %s:%d\r\n"
-                    "Upgrade: websocket\r\n"
-                    "Connection: Upgrade\r\n"
-                    "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
-                    "Sec-WebSocket-Protocol: %s\r\n"
-                    "Sec-WebSocket-Version: 13\r\n"
-                    "\r\n";
-
-                upgrade_request_length = snprintf(NULL, 0, upgrade_request_format,
-                    uws_client->resource_name,
-                    uws_client->hostname,
-                    uws_client->port,
-                    uws_client->protocols[0].protocol);
-                if (upgrade_request_length < 0)
+                /* Codes_SRS_UWS_CLIENT_01_090: [ The nonce MUST be selected randomly for each connection. ]*/
+                for (i = 0; i < sizeof(nonce); i++)
                 {
-                    /* Codes_SRS_UWS_CLIENT_01_408: [ If constructing of the WebSocket upgrade request fails, uws shall report that the open failed by calling the `on_ws_open_complete` callback passed to `uws_client_open` with `WS_OPEN_ERROR_CONSTRUCTING_UPGRADE_REQUEST`. ]*/
+                    nonce[i] = (unsigned char)gb_rand();
+                }
+
+                /* Codes_SRS_UWS_CLIENT_01_497: [ The nonce needed for the upgrade request shall be Base64 encoded with `Base64_Encode_Bytes`. ]*/
+                base64_nonce = Base64_Encode_Bytes(nonce, sizeof(nonce));
+                if (base64_nonce == NULL)
+                {
+                    /* Codes_SRS_UWS_CLIENT_01_498: [ If Base64 encoding the nonce for the upgrade request fails, then the uws client shall report that the open failed by calling the `on_ws_open_complete` callback passed to `uws_client_open` with `WS_OPEN_ERROR_BASE64_ENCODE_FAILED`. ]*/
                     LogError("Cannot construct the WebSocket upgrade request");
-                    indicate_ws_open_complete_error_and_close(uws_client, WS_OPEN_ERROR_CONSTRUCTING_UPGRADE_REQUEST);
+                    indicate_ws_open_complete_error(uws_client, WS_OPEN_ERROR_BASE64_ENCODE_FAILED);
                 }
                 else
                 {
-                    upgrade_request = (char*)malloc(upgrade_request_length + 1);
-                    if (upgrade_request == NULL)
+                    /* Codes_SRS_UWS_CLIENT_01_371: [ When `on_underlying_io_open_complete` is called with `IO_OPEN_OK` while uws is OPENING (`uws_client_open` was called), uws shall prepare the WebSockets upgrade request. ]*/
+                    /* Codes_SRS_UWS_CLIENT_01_081: [ The handshake consists of an HTTP Upgrade request, along with a list of required and optional header fields. ]*/
+                    /* Codes_SRS_UWS_CLIENT_01_082: [ The handshake MUST be a valid HTTP request as specified by [RFC2616]. ]*/
+                    /* Codes_SRS_UWS_CLIENT_01_083: [ The method of the request MUST be GET, and the HTTP version MUST be at least 1.1. ]*/
+                    /* Codes_SRS_UWS_CLIENT_01_084: [ The "Request-URI" part of the request MUST match the /resource name/ defined in Section 3 (a relative URI) or be an absolute http/https URI that, when parsed, has a /resource name/, /host/, and /port/ that match the corresponding ws/wss URI. ]*/
+                    /* Codes_SRS_UWS_CLIENT_01_085: [ The request MUST contain a |Host| header field whose value contains /host/ plus optionally ":" followed by /port/ (when not using the default port). ]*/
+                    /* Codes_SRS_UWS_CLIENT_01_086: [ The request MUST contain an |Upgrade| header field whose value MUST include the "websocket" keyword. ]*/
+                    /* Codes_SRS_UWS_CLIENT_01_087: [ The request MUST contain a |Connection| header field whose value MUST include the "Upgrade" token. ]*/
+                    /* Codes_SRS_UWS_CLIENT_01_088: [ The request MUST include a header field with the name |Sec-WebSocket-Key|. ]*/
+                    /* Codes_SRS_UWS_CLIENT_01_094: [ The request MUST include a header field with the name |Sec-WebSocket-Version|. ]*/
+                    /* Codes_SRS_UWS_CLIENT_01_095: [ The value of this header field MUST be 13. ]*/
+                    /* Codes_SRS_UWS_CLIENT_01_096: [ The request MAY include a header field with the name |Sec-WebSocket-Protocol|. ]*/
+                    /* Codes_SRS_UWS_CLIENT_01_100: [ The request MAY include a header field with the name |Sec-WebSocket-Extensions|. ]*/
+                    const char upgrade_request_format[] = "GET %s HTTP/1.1\r\n"
+                        "Host: %s:%d\r\n"
+                        "Upgrade: websocket\r\n"
+                        "Connection: Upgrade\r\n"
+                        "Sec-WebSocket-Key: %s\r\n"
+                        "Sec-WebSocket-Protocol: %s\r\n"
+                        "Sec-WebSocket-Version: 13\r\n"
+                        "\r\n";
+                    const char* base64_nonce_chars = STRING_c_str(base64_nonce);
+
+                    upgrade_request_length = snprintf(NULL, 0, upgrade_request_format,
+                        uws_client->resource_name,
+                        uws_client->hostname,
+                        uws_client->port,
+                        uws_client->protocols[0].protocol,
+                        base64_nonce_chars);
+                    if (upgrade_request_length < 0)
                     {
-                        /* Codes_SRS_UWS_CLIENT_01_406: [ If not enough memory can be allocated to construct the WebSocket upgrade request, uws shall report that the open failed by calling the `on_ws_open_complete` callback passed to `uws_client_open` with `WS_OPEN_ERROR_NOT_ENOUGH_MEMORY`. ]*/
-                        LogError("Cannot allocate memory for the WebSocket upgrade request");
-                        indicate_ws_open_complete_error_and_close(uws_client, WS_OPEN_ERROR_NOT_ENOUGH_MEMORY);
+                        /* Codes_SRS_UWS_CLIENT_01_408: [ If constructing of the WebSocket upgrade request fails, uws shall report that the open failed by calling the `on_ws_open_complete` callback passed to `uws_client_open` with `WS_OPEN_ERROR_CONSTRUCTING_UPGRADE_REQUEST`. ]*/
+                        LogError("Cannot construct the WebSocket upgrade request");
+                        indicate_ws_open_complete_error_and_close(uws_client, WS_OPEN_ERROR_CONSTRUCTING_UPGRADE_REQUEST);
                     }
                     else
                     {
-                        upgrade_request_length = snprintf(upgrade_request, upgrade_request_length + 1, upgrade_request_format,
-                            uws_client->resource_name,
-                            uws_client->hostname,
-                            uws_client->port,
-                            uws_client->protocols[0].protocol);
-
-                        /* No need to have any send complete here, as we are monitoring the received bytes */
-                        /* Codes_SRS_UWS_CLIENT_01_372: [ Once prepared the WebSocket upgrade request shall be sent by calling `xio_send`. ]*/
-                        /* Codes_SRS_UWS_CLIENT_01_080: [ Once a connection to the server has been established (including a connection via a proxy or over a TLS-encrypted tunnel), the client MUST send an opening handshake to the server. ]*/
-                        if (xio_send(uws_client->underlying_io, upgrade_request, upgrade_request_length, NULL, NULL) != 0)
+                        upgrade_request = (char*)malloc(upgrade_request_length + 1);
+                        if (upgrade_request == NULL)
                         {
-                            /* Codes_SRS_UWS_CLIENT_01_373: [ If `xio_send` fails then uws shall report that the open failed by calling the `on_ws_open_complete` callback passed to `uws_client_open` with `WS_OPEN_ERROR_CANNOT_SEND_UPGRADE_REQUEST`. ]*/
-                            LogError("Cannot send upgrade request");
-                            indicate_ws_open_complete_error_and_close(uws_client, WS_OPEN_ERROR_CANNOT_SEND_UPGRADE_REQUEST);
+                            /* Codes_SRS_UWS_CLIENT_01_406: [ If not enough memory can be allocated to construct the WebSocket upgrade request, uws shall report that the open failed by calling the `on_ws_open_complete` callback passed to `uws_client_open` with `WS_OPEN_ERROR_NOT_ENOUGH_MEMORY`. ]*/
+                            LogError("Cannot allocate memory for the WebSocket upgrade request");
+                            indicate_ws_open_complete_error_and_close(uws_client, WS_OPEN_ERROR_NOT_ENOUGH_MEMORY);
                         }
                         else
                         {
-                            /* Codes_SRS_UWS_CLIENT_01_102: [ Once the client's opening handshake has been sent, the client MUST wait for a response from the server before sending any further data. ]*/
-                            uws_client->uws_state = UWS_STATE_WAITING_FOR_UPGRADE_RESPONSE;
-                        }
+                            upgrade_request_length = snprintf(upgrade_request, upgrade_request_length + 1, upgrade_request_format,
+                                uws_client->resource_name,
+                                uws_client->hostname,
+                                uws_client->port,
+                                uws_client->protocols[0].protocol,
+                                base64_nonce_chars);
 
-                        free(upgrade_request);
+                            /* No need to have any send complete here, as we are monitoring the received bytes */
+                            /* Codes_SRS_UWS_CLIENT_01_372: [ Once prepared the WebSocket upgrade request shall be sent by calling `xio_send`. ]*/
+                            /* Codes_SRS_UWS_CLIENT_01_080: [ Once a connection to the server has been established (including a connection via a proxy or over a TLS-encrypted tunnel), the client MUST send an opening handshake to the server. ]*/
+                            if (xio_send(uws_client->underlying_io, upgrade_request, upgrade_request_length, NULL, NULL) != 0)
+                            {
+                                /* Codes_SRS_UWS_CLIENT_01_373: [ If `xio_send` fails then uws shall report that the open failed by calling the `on_ws_open_complete` callback passed to `uws_client_open` with `WS_OPEN_ERROR_CANNOT_SEND_UPGRADE_REQUEST`. ]*/
+                                LogError("Cannot send upgrade request");
+                                indicate_ws_open_complete_error_and_close(uws_client, WS_OPEN_ERROR_CANNOT_SEND_UPGRADE_REQUEST);
+                            }
+                            else
+                            {
+                                /* Codes_SRS_UWS_CLIENT_01_102: [ Once the client's opening handshake has been sent, the client MUST wait for a response from the server before sending any further data. ]*/
+                                uws_client->uws_state = UWS_STATE_WAITING_FOR_UPGRADE_RESPONSE;
+                            }
+
+                            free(upgrade_request);
+                        }
                     }
+
+                    STRING_delete(base64_nonce);
                 }
 
                 break;
@@ -1186,12 +1215,15 @@ static void on_underlying_io_error(void* context)
     default:
         break;
 
-    case UWS_STATE_CLOSING_UNDERLYING_IO:
+    case UWS_STATE_CLOSING_WAITING_FOR_CLOSE:
     case UWS_STATE_CLOSING_SENDING_CLOSE:
-        /* Codes_SRS_UWS_CLIENT_01_377: [ When `on_underlying_io_error` is called while the uws instance is CLOSING shall indicate the error by calling the `on_ws_close_complete` callback and then it shall set the uws client in the CLOSED state. ]*/
-        indicate_ws_error(uws_client, WS_ERROR_UNDERLYING_IO_ERROR);
-        xio_close(uws_client->underlying_io, NULL, NULL);
-        uws_client->uws_state = UWS_STATE_CLOSED;
+    case UWS_STATE_CLOSING_UNDERLYING_IO:
+        /* Codes_SRS_UWS_CLIENT_01_500: [ The callback `on_ws_close_complete` shall be called, while passing the `on_ws_close_complete_context` argument to it. ]*/
+        /* Codes_SRS_UWS_CLIENT_01_377: [ When `on_underlying_io_error` is called while the uws instance is CLOSING the underlying IO shall be closed by calling `xio_close`. ]*/
+        (void)xio_close(uws_client->underlying_io, NULL, NULL);
+
+        /* Codes_SRS_UWS_CLIENT_01_499: [ If the CLOSE was due to the peer closing, the callback `on_ws_close_complete` shall not be called. ]*/
+        indicate_ws_close_complete(uws_client);
         break;
 
     case UWS_STATE_OPENING_UNDERLYING_IO:

@@ -259,6 +259,8 @@ XX**SRS_UWS_CLIENT_01_402: [** When `on_underlying_io_open_complete` is called w
 XX**SRS_UWS_CLIENT_01_401: [** If `on_underlying_io_open_complete` is called with a NULL context, `on_underlying_io_open_complete` shall do nothing. **]** 
 XX**SRS_UWS_CLIENT_01_371: [** When `on_underlying_io_open_complete` is called with `IO_OPEN_OK` while uws is OPENING (`uws_client_open` was called), uws shall prepare the WebSockets upgrade request. **]**
 X**SRS_UWS_CLIENT_01_408: [** If constructing of the WebSocket upgrade request fails, uws shall report that the open failed by calling the `on_ws_open_complete` callback passed to `uws_client_open` with `WS_OPEN_ERROR_CONSTRUCTING_UPGRADE_REQUEST`. **]**
+XX**SRS_UWS_CLIENT_01_497: [** The nonce needed for the upgrade request shall be Base64 encoded with `Base64_Encode_Bytes`. **]**
+XX**SRS_UWS_CLIENT_01_498: [** If Base64 encoding the nonce for the upgrade request fails, then the uws client shall report that the open failed by calling the `on_ws_open_complete` callback passed to `uws_client_open` with `WS_OPEN_ERROR_BASE64_ENCODE_FAILED`. **]**
 XX**SRS_UWS_CLIENT_01_406: [** If not enough memory can be allocated to construct the WebSocket upgrade request, uws shall report that the open failed by calling the `on_ws_open_complete` callback passed to `uws_client_open` with `WS_OPEN_ERROR_NOT_ENOUGH_MEMORY`. **]**
 XX**SRS_UWS_CLIENT_01_372: [** Once prepared the WebSocket upgrade request shall be sent by calling `xio_send`. **]**
 XX**SRS_UWS_CLIENT_01_373: [** If `xio_send` fails then uws shall report that the open failed by calling the `on_ws_open_complete` callback passed to `uws_client_open` with `WS_OPEN_ERROR_CANNOT_SEND_UPGRADE_REQUEST`. **]**
@@ -270,8 +272,9 @@ XX**SRS_UWS_CLIENT_01_409: [** After any error is indicated by `on_ws_open_compl
 
 XX**SRS_UWS_CLIENT_01_375: [** When `on_underlying_io_error` is called while uws is OPENING, uws shall report that the open failed by calling the `on_ws_open_complete` callback passed to `uws_client_open` with `WS_OPEN_ERROR`. **]**
 XX**SRS_UWS_CLIENT_01_376: [** When `on_underlying_io_error` is called while the uws instance is OPEN, an error shall be reported to the user by calling the `on_ws_error` callback that was passed to `uws_client_open` with the argument `WS_ERROR_UNDERLYING_IO_ERROR`. **]**
-**SRS_UWS_CLIENT_01_377: [** When `on_underlying_io_error` is called while the uws instance is CLOSING the undelying IO shall be closed by calling `xio_close` and the callback `on_ws_close_complete` shall be called. **]**
-**SRS_UWS_CLIENT_01_494: [** Also the uws client state shall be set to CLOSED. **]**
+XX**SRS_UWS_CLIENT_01_377: [** When `on_underlying_io_error` is called while the uws instance is CLOSING the underlying IO shall be closed by calling `xio_close`. **]**
+**SRS_UWS_CLIENT_01_500: [** The callback `on_ws_close_complete` shall be called, while passing the `on_ws_close_complete_context` argument to it. **]**
+**SRS_UWS_CLIENT_01_499: [** If the CLOSE was due to the peer closing, the callback `on_ws_close_complete` shall not be called. **]**
 
 ### on_underlying_io_bytes_received
 
@@ -430,8 +433,8 @@ XX**SRS_UWS_CLIENT_01_496: [** If the close was initiated by the peer no `on_ws_
    6.   XX**SRS_UWS_CLIENT_01_087: [** The request MUST contain a |Connection| header field whose value MUST include the "Upgrade" token. **]**
 
    7.   XX**SRS_UWS_CLIENT_01_088: [** The request MUST include a header field with the name |Sec-WebSocket-Key|. **]**
-        **SRS_UWS_CLIENT_01_089: [** The value of this header field MUST be a nonce consisting of a randomly selected 16-byte value that has been base64-encoded (see Section 4 of [RFC4648]). **]**
-        **SRS_UWS_CLIENT_01_090: [** The nonce MUST be selected randomly for each connection. **]**
+        XX**SRS_UWS_CLIENT_01_089: [** The value of this header field MUST be a nonce consisting of a randomly selected 16-byte value that has been base64-encoded (see Section 4 of [RFC4648]). **]**
+        XX**SRS_UWS_CLIENT_01_090: [** The nonce MUST be selected randomly for each connection. **]**
 
         NOTE: As an example, if the randomly selected value was the sequence of bytes 0x01 0x02 0x03 0x04 0x05 0x06 0x07 0x08 0x09 0x0a 0x0b 0x0c 0x0d 0x0e 0x0f 0x10, the value of the header field would be "AQIDBAUGBwgJCgsMDQ4PEC=="
 
