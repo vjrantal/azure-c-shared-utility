@@ -503,7 +503,7 @@ TEST_FUNCTION_CLEANUP(method_cleanup)
 /* Tests_SRS_UWS_CLIENT_01_413: [ The protocol information indicated by `protocols` and `protocol_count` shall be copied for later use (for constructing the upgrade request). ]*/
 /* Tests_SRS_UWS_CLIENT_01_063: [ A client will need to supply a /host/, /port/, /resource name/, and a /secure/ flag, which are the components of a WebSocket URI as discussed in Section 3, along with a list of /protocols/ and /extensions/ to be used. ]*/
 /* Tests_SRS_UWS_CLIENT_01_076: [ If /secure/ is true, the client MUST perform a TLS handshake over the connection after opening the connection and before sending the handshake data [RFC2818]. ]*/
-TEST_FUNCTION(uws_create_with_valid_args_no_ssl_succeeds)
+TEST_FUNCTION(uws_client_create_with_valid_args_no_ssl_succeeds)
 {
 	// arrange
     SOCKETIO_CONFIG socketio_config;
@@ -539,7 +539,7 @@ TEST_FUNCTION(uws_create_with_valid_args_no_ssl_succeeds)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_002: [ If any of the arguments `hostname` and `resource_name` is NULL then `uws_client_create` shall return NULL. ]*/
-TEST_FUNCTION(uws_create_with_NULL_hostname_fails)
+TEST_FUNCTION(uws_client_create_with_NULL_hostname_fails)
 {
     // arrange
 
@@ -552,7 +552,7 @@ TEST_FUNCTION(uws_create_with_NULL_hostname_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_002: [ If any of the arguments `hostname` and `resource_name` is NULL then `uws_client_create` shall return NULL. ]*/
-TEST_FUNCTION(uws_create_with_NULL_resource_name_fails)
+TEST_FUNCTION(uws_client_create_with_NULL_resource_name_fails)
 {
     // arrange
 
@@ -565,7 +565,7 @@ TEST_FUNCTION(uws_create_with_NULL_resource_name_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_012: [ - `port` set to the `port` argument passed to `uws_client_create`. ]*/
-TEST_FUNCTION(uws_create_with_valid_args_no_ssl_port_different_than_80_succeeds)
+TEST_FUNCTION(uws_client_create_with_valid_args_no_ssl_port_different_than_80_succeeds)
 {
     // arrange
     SOCKETIO_CONFIG socketio_config;
@@ -601,7 +601,7 @@ TEST_FUNCTION(uws_create_with_valid_args_no_ssl_port_different_than_80_succeeds)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_410: [ The `protocols` argument shall be allowed to be NULL, in which case no protocol is to be specified by the client in the upgrade request. ]*/
-TEST_FUNCTION(uws_create_with_NULL_protocols_succeeds)
+TEST_FUNCTION(uws_client_create_with_NULL_protocols_succeeds)
 {
     // arrange
     SOCKETIO_CONFIG socketio_config;
@@ -634,7 +634,7 @@ TEST_FUNCTION(uws_create_with_NULL_protocols_succeeds)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_411: [ If `protocol_count` is non zero and `protocols` is NULL then `uws_client_create` shall fail and return NULL. ]*/
-TEST_FUNCTION(uws_create_with_non_zero_protocol_count_and_NULL_protocols_fails)
+TEST_FUNCTION(uws_client_create_with_non_zero_protocol_count_and_NULL_protocols_fails)
 {
     // arrange
     UWS_CLIENT_HANDLE uws_client;
@@ -648,7 +648,7 @@ TEST_FUNCTION(uws_create_with_non_zero_protocol_count_and_NULL_protocols_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_412: [ If the `protocol` member of any of the items in the `protocols` argument is NULL, then `uws_client_create` shall fail and return NULL. ]*/
-TEST_FUNCTION(uws_create_with_the_first_protocol_name_NULL_fails)
+TEST_FUNCTION(uws_client_create_with_the_first_protocol_name_NULL_fails)
 {
     // arrange
     UWS_CLIENT_HANDLE uws_client;
@@ -663,7 +663,7 @@ TEST_FUNCTION(uws_create_with_the_first_protocol_name_NULL_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_412: [ If the `protocol` member of any of the items in the `protocols` argument is NULL, then `uws_client_create` shall fail and return NULL. ]*/
-TEST_FUNCTION(uws_create_with_the_second_protocol_name_NULL_fails)
+TEST_FUNCTION(uws_client_create_with_the_second_protocol_name_NULL_fails)
 {
     // arrange
     UWS_CLIENT_HANDLE uws_client;
@@ -678,7 +678,7 @@ TEST_FUNCTION(uws_create_with_the_second_protocol_name_NULL_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_003: [ If allocating memory for the new uws instance fails then `uws_client_create` shall return NULL. ]*/
-TEST_FUNCTION(when_allocating_memory_for_the_new_uws_instance_fails_then_uws_create_fails)
+TEST_FUNCTION(when_allocating_memory_for_the_new_uws_instance_fails_then_uws_client_create_fails)
 {
     // arrange
     SOCKETIO_CONFIG socketio_config;
@@ -700,7 +700,7 @@ TEST_FUNCTION(when_allocating_memory_for_the_new_uws_instance_fails_then_uws_cre
 }
 
 /* Tests_SRS_UWS_CLIENT_01_423: [ If `BUFFER_new` fails  then `uws_client_create` shall fail and return NULL. ]*/
-TEST_FUNCTION(when_BUFFER_new_fails_then_uws_create_fails)
+TEST_FUNCTION(when_BUFFER_new_fails_then_uws_client_create_fails)
 {
     // arrange
     SOCKETIO_CONFIG socketio_config;
@@ -722,7 +722,7 @@ TEST_FUNCTION(when_BUFFER_new_fails_then_uws_create_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_392: [ If allocating memory for the copy of the `hostname` argument fails, then `uws_client_create` shall return NULL. ]*/
-TEST_FUNCTION(when_allocating_memory_for_the_hostname_copy_fails_then_uws_create_fails)
+TEST_FUNCTION(when_allocating_memory_for_the_hostname_copy_fails_then_uws_client_create_fails)
 {
     // arrange
     SOCKETIO_CONFIG socketio_config;
@@ -751,7 +751,7 @@ TEST_FUNCTION(when_allocating_memory_for_the_hostname_copy_fails_then_uws_create
 }
 
 /* Tests_SRS_UWS_CLIENT_01_405: [ If allocating memory for the copy of the `resource_name` argument fails, then `uws_client_create` shall return NULL. ]*/
-TEST_FUNCTION(when_allocating_memory_for_the_resource_name_copy_fails_then_uws_create_fails)
+TEST_FUNCTION(when_allocating_memory_for_the_resource_name_copy_fails_then_uws_client_create_fails)
 {
     // arrange
     SOCKETIO_CONFIG socketio_config;
@@ -783,7 +783,7 @@ TEST_FUNCTION(when_allocating_memory_for_the_resource_name_copy_fails_then_uws_c
 }
 
 /* Tests_SRS_UWS_CLIENT_01_018: [ If `singlylinkedlist_create` fails then `uws_client_create` shall fail and return NULL. ]*/
-TEST_FUNCTION(when_creating_the_pending_sends_list_fails_then_uws_create_fails)
+TEST_FUNCTION(when_creating_the_pending_sends_list_fails_then_uws_client_create_fails)
 {
     // arrange
     SOCKETIO_CONFIG socketio_config;
@@ -818,7 +818,7 @@ TEST_FUNCTION(when_creating_the_pending_sends_list_fails_then_uws_create_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_007: [ If obtaining the underlying IO interface fails, then `uws_client_create` shall fail and return NULL. ]*/
-TEST_FUNCTION(when_getting_the_socket_interface_description_fails_then_uws_create_fails)
+TEST_FUNCTION(when_getting_the_socket_interface_description_fails_then_uws_client_create_fails)
 {
     // arrange
     SOCKETIO_CONFIG socketio_config;
@@ -854,7 +854,7 @@ TEST_FUNCTION(when_getting_the_socket_interface_description_fails_then_uws_creat
 }
 
 /* Tests_SRS_UWS_CLIENT_01_016: [ If `xio_create` fails, then `uws_client_create` shall fail and return NULL. ]*/
-TEST_FUNCTION(when_creating_the_io_handle_fails_then_uws_create_fails)
+TEST_FUNCTION(when_creating_the_io_handle_fails_then_uws_client_create_fails)
 {
     // arrange
     SOCKETIO_CONFIG socketio_config;
@@ -893,7 +893,7 @@ TEST_FUNCTION(when_creating_the_io_handle_fails_then_uws_create_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_414: [ If allocating memory for the copied protocol information fails then `uws_client_create` shall fail and return NULL. ]*/
-TEST_FUNCTION(when_allocating_memory_for_the_protocols_array_fails_then_uws_create_fails)
+TEST_FUNCTION(when_allocating_memory_for_the_protocols_array_fails_then_uws_client_create_fails)
 {
     // arrange
     SOCKETIO_CONFIG socketio_config;
@@ -934,7 +934,7 @@ TEST_FUNCTION(when_allocating_memory_for_the_protocols_array_fails_then_uws_crea
 }
 
 /* Tests_SRS_UWS_CLIENT_01_414: [ If allocating memory for the copied protocol information fails then `uws_client_create` shall fail and return NULL. ]*/
-TEST_FUNCTION(when_allocating_memory_for_the_first_proitocol_name_fails_then_uws_create_fails)
+TEST_FUNCTION(when_allocating_memory_for_the_first_proitocol_name_fails_then_uws_client_create_fails)
 {
     // arrange
     SOCKETIO_CONFIG socketio_config;
@@ -978,7 +978,7 @@ TEST_FUNCTION(when_allocating_memory_for_the_first_proitocol_name_fails_then_uws
 }
 
 /* Tests_SRS_UWS_CLIENT_01_414: [ If allocating memory for the copied protocol information fails then `uws_client_create` shall fail and return NULL. ]*/
-TEST_FUNCTION(when_allocating_memory_for_the_second_protocol_name_fails_then_uws_create_fails)
+TEST_FUNCTION(when_allocating_memory_for_the_second_protocol_name_fails_then_uws_client_create_fails)
 {
     // arrange
     SOCKETIO_CONFIG socketio_config;
@@ -1031,7 +1031,7 @@ TEST_FUNCTION(when_allocating_memory_for_the_second_protocol_name_fails_then_uws
 /* Tests_SRS_UWS_CLIENT_01_015: [ - `port` set to the `port` argument passed to `uws_client_create`. ]*/
 /* Tests_SRS_UWS_CLIENT_01_360: [ Connection confidentiality and integrity is provided by running the WebSocket Protocol over TLS (wss URIs). ]*/
 /* Tests_SRS_UWS_CLIENT_01_361: [ WebSocket implementations MUST support TLS and SHOULD employ it when communicating with their peers. ]*/
-TEST_FUNCTION(uws_create_with_valid_args_ssl_succeeds)
+TEST_FUNCTION(uws_client_create_with_valid_args_ssl_succeeds)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1069,7 +1069,7 @@ TEST_FUNCTION(uws_create_with_valid_args_ssl_succeeds)
 /* Tests_SRS_UWS_CLIENT_01_013: [ The create arguments for the tls IO (when `use_ssl` is 1) shall have: ]*/
 /* Tests_SRS_UWS_CLIENT_01_014: [ - `hostname` set to the `hostname` argument passed to `uws_client_create`. ]*/
 /* Tests_SRS_UWS_CLIENT_01_015: [ - `port` set to the `port` argument passed to `uws_client_create`. ]*/
-TEST_FUNCTION(uws_create_with_valid_args_ssl_port_different_than_443_succeeds)
+TEST_FUNCTION(uws_client_create_with_valid_args_ssl_port_different_than_443_succeeds)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1104,7 +1104,7 @@ TEST_FUNCTION(uws_create_with_valid_args_ssl_port_different_than_443_succeeds)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_007: [ If obtaining the underlying IO interface fails, then `uws_client_create` shall fail and return NULL. ]*/
-TEST_FUNCTION(when_getting_the_tlsio_interface_fails_then_uws_create_fails)
+TEST_FUNCTION(when_getting_the_tlsio_interface_fails_then_uws_client_create_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1146,7 +1146,7 @@ TEST_FUNCTION(when_getting_the_tlsio_interface_fails_then_uws_create_fails)
 /* Tests_SRS_UWS_CLIENT_01_024: [ `uws_client_destroy` shall free the list used to track the pending sends by calling `singlylinkedlist_destroy`. ]*/
 /* Tests_SRS_UWS_CLIENT_01_424: [ `uws_client_destroy` shall free the buffer allocated in `uws_client_create` by calling `BUFFER_delete`. ]*/
 /* Tests_SRS_UWS_CLIENT_01_437: [ `uws_client_destroy` shall free the protocols array allocated in `uws_client_create`. ]*/
-TEST_FUNCTION(uws_destroy_fress_the_resources)
+TEST_FUNCTION(uws_client_destroy_fress_the_resources)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1176,7 +1176,7 @@ TEST_FUNCTION(uws_destroy_fress_the_resources)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_437: [ `uws_client_destroy` shall free the protocols array allocated in `uws_client_create`. ]*/
-TEST_FUNCTION(uws_destroy_with_2_protocols_fress_both_protocols)
+TEST_FUNCTION(uws_client_destroy_with_2_protocols_fress_both_protocols)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1208,7 +1208,7 @@ TEST_FUNCTION(uws_destroy_with_2_protocols_fress_both_protocols)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_437: [ `uws_client_destroy` shall free the protocols array allocated in `uws_client_create`. ]*/
-TEST_FUNCTION(uws_destroy_with_no_protocols_frees_all_other_resources)
+TEST_FUNCTION(uws_client_destroy_with_no_protocols_frees_all_other_resources)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1236,7 +1236,7 @@ TEST_FUNCTION(uws_destroy_with_no_protocols_frees_all_other_resources)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_020: [ If `uws_client` is NULL, `uws_client_destroy` shall do nothing. ]*/
-TEST_FUNCTION(uws_destroy_with_NULL_does_nothing)
+TEST_FUNCTION(uws_client_destroy_with_NULL_does_nothing)
 {
     // arrange
 
@@ -1250,7 +1250,7 @@ TEST_FUNCTION(uws_destroy_with_NULL_does_nothing)
 /* Tests_SRS_UWS_CLIENT_01_021: [ `uws_client_destroy` shall perform a close action if the uws instance has already been open. ]*/
 /* Tests_SRS_UWS_CLIENT_01_034: [ `uws_client_close` shall obtain all the pending send frames by repetitively querying for the head of the pending IO list and freeing that head item. ]*/
 /* Tests_SRS_UWS_CLIENT_01_035: [ Obtaining the head of the pending send frames list shall be done by calling `singlylinkedlist_get_head_item`. ]*/
-TEST_FUNCTION(uws_destroy_also_performs_a_close)
+TEST_FUNCTION(uws_client_destroy_also_performs_a_close)
 {
     TLSIO_CONFIG tlsio_config;
     UWS_CLIENT_HANDLE uws_client;
@@ -1290,7 +1290,7 @@ TEST_FUNCTION(uws_destroy_also_performs_a_close)
 /* Tests_SRS_UWS_CLIENT_01_367: [ The callbacks `on_underlying_io_open_complete`, `on_underlying_io_bytes_received` and `on_underlying_io_error` shall be passed as arguments to `xio_open`. ]*/
 /* Tests_SRS_UWS_CLIENT_01_026: [ On success, `uws_client_open` shall return 0. ]*/
 /* Tests_SRS_UWS_CLIENT_01_061: [ To _Establish a WebSocket Connection_, a client opens a connection and sends a handshake as defined in this section. ]*/
-TEST_FUNCTION(uws_open_opens_the_underlying_IO)
+TEST_FUNCTION(uws_client_open_opens_the_underlying_IO)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1323,7 +1323,7 @@ TEST_FUNCTION(uws_open_opens_the_underlying_IO)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_027: [ If `uws_client`, `on_ws_open_complete`, `on_ws_frame_received`, `on_ws_peer_closed` or `on_ws_error` is NULL, `uws_client_open` shall fail and return a non-zero value. ]*/
-TEST_FUNCTION(uws_open_with_NULL_handle_fails)
+TEST_FUNCTION(uws_client_open_with_NULL_handle_fails)
 {
     // arrange
     int result;
@@ -1337,7 +1337,7 @@ TEST_FUNCTION(uws_open_with_NULL_handle_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_027: [ If `uws_client`, `on_ws_open_complete`, `on_ws_frame_received`, `on_ws_peer_closed` or `on_ws_error` is NULL, `uws_client_open` shall fail and return a non-zero value. ]*/
-TEST_FUNCTION(uws_open_with_NULL_on_ws_open_complete_callback_fails)
+TEST_FUNCTION(uws_client_open_with_NULL_on_ws_open_complete_callback_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1362,7 +1362,7 @@ TEST_FUNCTION(uws_open_with_NULL_on_ws_open_complete_callback_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_027: [ If `uws_client`, `on_ws_open_complete`, `on_ws_frame_received`, `on_ws_peer_closed` or `on_ws_error` is NULL, `uws_client_open` shall fail and return a non-zero value. ]*/
-TEST_FUNCTION(uws_open_with_NULL_on_ws_frame_received_callback_fails)
+TEST_FUNCTION(uws_client_open_with_NULL_on_ws_frame_received_callback_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1387,7 +1387,7 @@ TEST_FUNCTION(uws_open_with_NULL_on_ws_frame_received_callback_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_027: [ If `uws_client`, `on_ws_open_complete`, `on_ws_frame_received`, `on_ws_peer_closed` or `on_ws_error` is NULL, `uws_client_open` shall fail and return a non-zero value. ]*/
-TEST_FUNCTION(uws_open_with_NULL_on_ws_peer_closed_callback_fails)
+TEST_FUNCTION(uws_client_open_with_NULL_on_ws_peer_closed_callback_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1412,7 +1412,7 @@ TEST_FUNCTION(uws_open_with_NULL_on_ws_peer_closed_callback_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_027: [ If `uws_client`, `on_ws_open_complete`, `on_ws_frame_received`, `on_ws_peer_closed` or `on_ws_error` is NULL, `uws_client_open` shall fail and return a non-zero value. ]*/
-TEST_FUNCTION(uws_open_with_NULL_on_ws_error_callback_fails)
+TEST_FUNCTION(uws_client_open_with_NULL_on_ws_error_callback_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1437,7 +1437,7 @@ TEST_FUNCTION(uws_open_with_NULL_on_ws_error_callback_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_393: [ The context arguments for the callbacks shall be allowed to be NULL. ]*/
-TEST_FUNCTION(uws_open_with_NULL_on_ws_open_complete_context_succeeds)
+TEST_FUNCTION(uws_client_open_with_NULL_on_ws_open_complete_context_succeeds)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1470,7 +1470,7 @@ TEST_FUNCTION(uws_open_with_NULL_on_ws_open_complete_context_succeeds)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_393: [ The context arguments for the callbacks shall be allowed to be NULL. ]*/
-TEST_FUNCTION(uws_open_with_NULL_on_ws_frame_received_context_succeeds)
+TEST_FUNCTION(uws_client_open_with_NULL_on_ws_frame_received_context_succeeds)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1503,7 +1503,7 @@ TEST_FUNCTION(uws_open_with_NULL_on_ws_frame_received_context_succeeds)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_393: [ The context arguments for the callbacks shall be allowed to be NULL. ]*/
-TEST_FUNCTION(uws_open_with_NULL_on_ws_peer_closed_context_succeeds)
+TEST_FUNCTION(uws_client_open_with_NULL_on_ws_peer_closed_context_succeeds)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1536,7 +1536,7 @@ TEST_FUNCTION(uws_open_with_NULL_on_ws_peer_closed_context_succeeds)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_393: [ The context arguments for the callbacks shall be allowed to be NULL. ]*/
-TEST_FUNCTION(uws_open_with_NULL_on_ws_error_context_succeeds)
+TEST_FUNCTION(uws_client_open_with_NULL_on_ws_error_context_succeeds)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1570,7 +1570,7 @@ TEST_FUNCTION(uws_open_with_NULL_on_ws_error_context_succeeds)
 
 /* Tests_SRS_UWS_CLIENT_01_028: [ If opening the underlying IO fails then `uws_client_open` shall fail and return a non-zero value. ]*/
 /* Tests_SRS_UWS_CLIENT_01_075: [ If the connection could not be opened, either because a direct connection failed or because any proxy used returned an error, then the client MUST _Fail the WebSocket Connection_ and abort the connection attempt. ]*/
-TEST_FUNCTION(when_opening_the_underlying_io_fails_uws_open_fails)
+TEST_FUNCTION(when_opening_the_underlying_io_fails_uws_client_open_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1604,7 +1604,7 @@ TEST_FUNCTION(when_opening_the_underlying_io_fails_uws_open_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_394: [ `uws_client_open` while the uws instance is already OPEN or OPENING shall fail and return a non-zero value. ]*/
-TEST_FUNCTION(uws_open_after_uws_open_without_a_close_fails)
+TEST_FUNCTION(uws_client_open_after_uws_client_open_without_a_close_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1630,7 +1630,7 @@ TEST_FUNCTION(uws_open_after_uws_open_without_a_close_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_400: [ `uws_client_open` while CLOSING shall fail and return a non-zero value. ]*/
-TEST_FUNCTION(uws_open_while_closing_fails)
+TEST_FUNCTION(uws_client_open_while_closing_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1664,7 +1664,7 @@ TEST_FUNCTION(uws_open_while_closing_fails)
 /* Tests_SRS_UWS_CLIENT_01_396: [ On success `uws_client_close` shall return 0. ]*/
 /* Tests_SRS_UWS_CLIENT_01_399: [ `on_ws_close_complete` and `on_ws_close_complete_context` shall be saved and the callback `on_ws_close_complete` shall be triggered when the close is complete. ]*/
 /* Tests_SRS_UWS_CLIENT_01_317: [ Clients SHOULD NOT close the WebSocket connection arbitrarily. ]*/
-TEST_FUNCTION(uws_close_closes_the_underlying_IO)
+TEST_FUNCTION(uws_client_close_closes_the_underlying_IO)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1698,7 +1698,7 @@ TEST_FUNCTION(uws_close_closes_the_underlying_IO)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_030: [ if `uws_client` is NULL, `uws_client_close` shall return a non-zero value. ]*/
-TEST_FUNCTION(uws_close_with_NULL_handle_fails)
+TEST_FUNCTION(uws_client_close_with_NULL_handle_fails)
 {
     // arrange
     int result;
@@ -1712,7 +1712,7 @@ TEST_FUNCTION(uws_close_with_NULL_handle_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_397: [ The `on_ws_close_complete` argument shall be allowed to be NULL, in which case no callback shall be called when the close is complete. ]*/
-TEST_FUNCTION(uws_close_with_NULL_close_complete_callback_is_allowed)
+TEST_FUNCTION(uws_client_close_with_NULL_close_complete_callback_is_allowed)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1746,7 +1746,7 @@ TEST_FUNCTION(uws_close_with_NULL_close_complete_callback_is_allowed)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_398: [ `on_ws_close_complete_context` shall also be allows to be NULL. ]*/
-TEST_FUNCTION(uws_close_with_NULL_close_context_succeeds)
+TEST_FUNCTION(uws_client_close_with_NULL_close_context_succeeds)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1780,7 +1780,7 @@ TEST_FUNCTION(uws_close_with_NULL_close_context_succeeds)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_395: [ If `xio_close` fails, `uws_client_close` shall fail and return a non-zero value. ]*/
-TEST_FUNCTION(when_the_underlying_xio_close_fails_then_uws_close_fails)
+TEST_FUNCTION(when_the_underlying_xio_close_fails_then_uws_client_close_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1814,7 +1814,7 @@ TEST_FUNCTION(when_the_underlying_xio_close_fails_then_uws_close_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_032: [ `uws_client_close` when no open action has been issued shall fail and return a non-zero value. ]*/
-TEST_FUNCTION(uws_close_without_open_fails)
+TEST_FUNCTION(uws_client_close_without_open_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1839,7 +1839,7 @@ TEST_FUNCTION(uws_close_without_open_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_033: [ `uws_client_close` after a `uws_client_close` shall fail and return a non-zero value. ]*/
-TEST_FUNCTION(uws_close_while_closing_fails)
+TEST_FUNCTION(uws_client_close_while_closing_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1866,7 +1866,7 @@ TEST_FUNCTION(uws_close_while_closing_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_033: [ `uws_client_close` after a `uws_client_close` shall fail and return a non-zero value. ]*/
-TEST_FUNCTION(uws_close_while_WAITING_for_close_frame_fails)
+TEST_FUNCTION(uws_client_close_while_WAITING_for_close_frame_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1896,7 +1896,7 @@ TEST_FUNCTION(uws_close_while_WAITING_for_close_frame_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_033: [ `uws_client_close` after a `uws_client_close` shall fail and return a non-zero value. ]*/
-TEST_FUNCTION(uws_close_after_close_complete_fails)
+TEST_FUNCTION(uws_client_close_after_close_complete_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1927,7 +1927,7 @@ TEST_FUNCTION(uws_close_after_close_complete_fails)
 /* Tests_SRS_UWS_CLIENT_01_035: [ Obtaining the head of the pending send frames list shall be done by calling `singlylinkedlist_get_head_item`. ]*/
 /* Tests_SRS_UWS_CLIENT_01_036: [ For each pending send frame the send complete callback shall be called with `UWS_SEND_FRAME_CANCELLED`. ]*/
 /* Tests_SRS_UWS_CLIENT_01_037: [ When indicating pending send frames as cancelled the callback context passed to the `on_ws_send_frame_complete` callback shall be the context given to `uws_client_send_frame`. ]*/
-TEST_FUNCTION(uws_close_with_1_pending_send_frames_indicates_the_frames_as_cancelled)
+TEST_FUNCTION(uws_client_close_with_1_pending_send_frames_indicates_the_frames_as_cancelled)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -1973,7 +1973,7 @@ TEST_FUNCTION(uws_close_with_1_pending_send_frames_indicates_the_frames_as_cance
 /* Tests_SRS_UWS_CLIENT_01_035: [ Obtaining the head of the pending send frames list shall be done by calling `singlylinkedlist_get_head_item`. ]*/
 /* Tests_SRS_UWS_CLIENT_01_036: [ For each pending send frame the send complete callback shall be called with `UWS_SEND_FRAME_CANCELLED`. ]*/
 /* Tests_SRS_UWS_CLIENT_01_037: [ When indicating pending send frames as cancelled the callback context passed to the `on_ws_send_frame_complete` callback shall be the context given to `uws_client_send_frame`. ]*/
-TEST_FUNCTION(uws_close_with_2_pending_send_frames_indicates_the_frames_as_cancelled)
+TEST_FUNCTION(uws_client_close_with_2_pending_send_frames_indicates_the_frames_as_cancelled)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -2321,7 +2321,7 @@ TEST_FUNCTION(uws_client_close_handshake_when_already_CLOSING_underlying_IO_fail
 }
 
 /* Tests_SRS_UWS_CLIENT_01_033: [ `uws_client_close` after a `uws_client_close` shall fail and return a non-zero value. ]*/
-TEST_FUNCTION(uws_close_handshake_while_WAITING_for_close_frame_fails)
+TEST_FUNCTION(uws_client_close_handshake_while_WAITING_for_close_frame_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -2379,7 +2379,7 @@ TEST_FUNCTION(on_underlying_io_open_complete_with_ERROR_triggers_the_ws_open_com
 }
 
 /* Tests_SRS_UWS_CLIENT_01_409: [ After any error is indicated by `on_ws_open_complete`, a subsequent `uws_client_open` shall be possible. ]*/
-TEST_FUNCTION(uws_open_after_WS_OPEN_ERROR_UNDERLYING_IO_OPEN_FAILED_succeeds)
+TEST_FUNCTION(uws_client_open_after_WS_OPEN_ERROR_UNDERLYING_IO_OPEN_FAILED_succeeds)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -2464,7 +2464,7 @@ TEST_FUNCTION(on_underlying_io_open_complete_with_CANCELLED_triggers_the_ws_open
 }
 
 /* Tests_SRS_UWS_CLIENT_01_409: [ After any error is indicated by `on_ws_open_complete`, a subsequent `uws_client_open` shall be possible. ]*/
-TEST_FUNCTION(uws_open_after_WS_OPEN_ERROR_UNDERLYING_IO_OPEN_CANCELLED_succeeds)
+TEST_FUNCTION(uws_client_open_after_WS_OPEN_ERROR_UNDERLYING_IO_OPEN_CANCELLED_succeeds)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -2574,7 +2574,7 @@ TEST_FUNCTION(when_allocating_memory_for_the_websocket_upgrade_request_fails_the
 }
 
 /* Tests_SRS_UWS_CLIENT_01_409: [ After any error is indicated by `on_ws_open_complete`, a subsequent `uws_client_open` shall be possible. ]*/
-TEST_FUNCTION(uws_open_after_WS_OPEN_ERROR_NOT_ENOUGH_MEMORY_succeeds)
+TEST_FUNCTION(uws_client_open_after_WS_OPEN_ERROR_NOT_ENOUGH_MEMORY_succeeds)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -2650,7 +2650,7 @@ TEST_FUNCTION(when_sending_the_upgrade_request_fails_the_error_WS_OPEN_ERROR_CAN
 }
 
 /* Tests_SRS_UWS_CLIENT_01_409: [ After any error is indicated by `on_ws_open_complete`, a subsequent `uws_client_open` shall be possible. ]*/
-TEST_FUNCTION(uws_open_after_WS_OPEN_ERROR_CANNOT_SEND_UPGRADE_REQUEST_succeeds)
+TEST_FUNCTION(uws_client_open_after_WS_OPEN_ERROR_CANNOT_SEND_UPGRADE_REQUEST_succeeds)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -2723,7 +2723,7 @@ TEST_FUNCTION(when_sending_the_upgrade_request_fails_the_error_WS_OPEN_ERROR_MUL
 }
 
 /* Tests_SRS_UWS_CLIENT_01_409: [ After any error is indicated by `on_ws_open_complete`, a subsequent `uws_client_open` shall be possible. ]*/
-TEST_FUNCTION(uws_open_after_WS_OPEN_ERROR_MULTIPLE_UNDERLYING_IO_OPEN_EVENTS_succeeds)
+TEST_FUNCTION(uws_client_open_after_WS_OPEN_ERROR_MULTIPLE_UNDERLYING_IO_OPEN_EVENTS_succeeds)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -4735,7 +4735,7 @@ TEST_FUNCTION(sending_after_a_close_is_received_does_not_send_anything)
 /* uws_client_send_frame */
 
 /* Tests_SRS_UWS_CLIENT_01_044: [ If any the arguments `uws_client` is NULL, `uws_client_send_frame` shall fail and return a non-zero value. ]*/
-TEST_FUNCTION(uws_send_frame_with_NULL_handle_fails)
+TEST_FUNCTION(uws_client_send_frame_with_NULL_handle_fails)
 {
     // arrange
     unsigned char test_payload[] = { 0x42 };
@@ -4750,7 +4750,7 @@ TEST_FUNCTION(uws_send_frame_with_NULL_handle_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_045: [ If `size` is non-zero and `buffer` is NULL then `uws_client_send_frame` shall fail and return a non-zero value. ]*/
-TEST_FUNCTION(uws_send_frame_with_NULL_buffer_and_non_zero_size_fails)
+TEST_FUNCTION(uws_client_send_frame_with_NULL_buffer_and_non_zero_size_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -4781,7 +4781,7 @@ TEST_FUNCTION(uws_send_frame_with_NULL_buffer_and_non_zero_size_fails)
 /* Tests_SRS_UWS_CLIENT_01_043: [ If the uws instance is not OPEN (open has not been called or is still in progress) then `uws_client_send_frame` shall fail and return a non-zero value. ]*/
 /* Tests_SRS_UWS_CLIENT_01_146: [ A data frame MAY be transmitted by either the client or the server at any time after opening handshake completion and before that endpoint has sent a Close frame (Section 5.5.1). ]*/
 /* Tests_SRS_UWS_CLIENT_01_268: [ The endpoint MUST ensure the WebSocket connection is in the OPEN state ]*/
-TEST_FUNCTION(uws_send_frame_when_not_open_fails)
+TEST_FUNCTION(uws_client_send_frame_when_not_open_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -4808,7 +4808,7 @@ TEST_FUNCTION(uws_send_frame_when_not_open_fails)
 
 /* Tests_SRS_UWS_CLIENT_01_043: [ If the uws instance is not OPEN (open has not been called or is still in progress) then `uws_client_send_frame` shall fail and return a non-zero value. ]*/
 /* Tests_SRS_UWS_CLIENT_01_146: [ A data frame MAY be transmitted by either the client or the server at any time after opening handshake completion and before that endpoint has sent a Close frame (Section 5.5.1). ]*/
-TEST_FUNCTION(uws_send_frame_when_opening_underlying_io_fails)
+TEST_FUNCTION(uws_client_send_frame_when_opening_underlying_io_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -4836,7 +4836,7 @@ TEST_FUNCTION(uws_send_frame_when_opening_underlying_io_fails)
 
 /* Tests_SRS_UWS_CLIENT_01_043: [ If the uws instance is not OPEN (open has not been called or is still in progress) then `uws_client_send_frame` shall fail and return a non-zero value. ]*/
 /* Tests_SRS_UWS_CLIENT_01_146: [ A data frame MAY be transmitted by either the client or the server at any time after opening handshake completion and before that endpoint has sent a Close frame (Section 5.5.1). ]*/
-TEST_FUNCTION(uws_send_frame_when_waiting_for_upgrade_response_fails)
+TEST_FUNCTION(uws_client_send_frame_when_waiting_for_upgrade_response_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -4881,7 +4881,7 @@ TEST_FUNCTION(uws_send_frame_when_waiting_for_upgrade_response_fails)
 /* Tests_SRS_UWS_CLIENT_01_270: [ An endpoint MUST encapsulate the /data/ in a WebSocket frame as defined in Section 5.2. ]*/
 /* Tests_SRS_UWS_CLIENT_01_274: [ If the data is being sent by the client, the frame(s) MUST be masked as defined in Section 5.3. ]*/
 /* Tests_SRS_UWS_CLIENT_01_276: [ The frame(s) that have been formed MUST be transmitted over the underlying network connection. ]*/
-TEST_FUNCTION(uws_send_frame_succeeds)
+TEST_FUNCTION(uws_client_send_frame_succeeds)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -4985,7 +4985,7 @@ TEST_FUNCTION(uws_send_text_frame_succeeds)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_047: [ If allocating memory for the newly queued item fails, `uws_client_send_frame` shall fail and return a non-zero value. ]*/
-TEST_FUNCTION(when_allocating_memory_for_the_new_sent_item_fails_uws_send_frame_fails)
+TEST_FUNCTION(when_allocating_memory_for_the_new_sent_item_fails_uws_client_send_frame_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -5018,7 +5018,7 @@ TEST_FUNCTION(when_allocating_memory_for_the_new_sent_item_fails_uws_send_frame_
 }
 
 /* Tests_SRS_UWS_CLIENT_01_426: [ If `uws_frame_encoder_encode` fails, `uws_client_send_frame` shall fail and return a non-zero value. ]*/
-TEST_FUNCTION(when_encoding_the_frame_fails_uws_send_frame_fails)
+TEST_FUNCTION(when_encoding_the_frame_fails_uws_client_send_frame_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -5059,7 +5059,7 @@ TEST_FUNCTION(when_encoding_the_frame_fails_uws_send_frame_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_058: [ If `xio_send` fails, `uws_client_send_frame` shall fail and return a non-zero value. ]*/
-TEST_FUNCTION(when_xio_send_fails_uws_send_frame_fails)
+TEST_FUNCTION(when_xio_send_fails_uws_client_send_frame_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -5117,7 +5117,7 @@ TEST_FUNCTION(when_xio_send_fails_uws_send_frame_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_049: [ If `singlylinkedlist_add` fails, `uws_client_send_frame` shall fail and return a non-zero value. ]*/
-TEST_FUNCTION(when_adding_the_item_to_the_list_fails_uws_send_frame_fails)
+TEST_FUNCTION(when_adding_the_item_to_the_list_fails_uws_client_send_frame_fails)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -5167,7 +5167,7 @@ TEST_FUNCTION(when_adding_the_item_to_the_list_fails_uws_send_frame_fails)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_050: [ The argument `on_ws_send_frame_complete` shall be optional, if NULL is passed by the caller then no send complete callback shall be triggered. ]*/
-TEST_FUNCTION(uws_send_frame_with_NULL_complete_callback_succeeds)
+TEST_FUNCTION(uws_client_send_frame_with_NULL_complete_callback_succeeds)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -5459,7 +5459,7 @@ TEST_FUNCTION(on_underlying_io_send_complete_with_an_unknown_result_indicates_an
 /* uws_client_dowork */
 
 /* Tests_SRS_UWS_CLIENT_01_059: [ If the `uws_client` argument is NULL, `uws_client_dowork` shall do nothing. ]*/
-TEST_FUNCTION(uws_dowork_with_NULL_handle_does_nothing)
+TEST_FUNCTION(uws_client_dowork_with_NULL_handle_does_nothing)
 {
     // arrange
 
@@ -5471,7 +5471,7 @@ TEST_FUNCTION(uws_dowork_with_NULL_handle_does_nothing)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_430: [ `uws_client_dowork` shall call `xio_dowork` with the IO handle argument set to the underlying IO created in `uws_client_create`. ]*/
-TEST_FUNCTION(uws_dowork_calls_the_underlying_io_dowork)
+TEST_FUNCTION(uws_client_dowork_calls_the_underlying_io_dowork)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
@@ -5497,7 +5497,7 @@ TEST_FUNCTION(uws_dowork_calls_the_underlying_io_dowork)
 }
 
 /* Tests_SRS_UWS_CLIENT_01_060: [ If the IO is not yet open, `uws_client_dowork` shall do nothing. ]*/
-TEST_FUNCTION(uws_dowork_when_closed_does_nothing)
+TEST_FUNCTION(uws_client_dowork_when_closed_does_nothing)
 {
     // arrange
     TLSIO_CONFIG tlsio_config;
