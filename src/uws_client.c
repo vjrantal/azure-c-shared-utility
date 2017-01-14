@@ -65,7 +65,7 @@ typedef struct WS_PENDING_SEND_TAG
     UWS_CLIENT_HANDLE uws_client;
 } WS_PENDING_SEND;
 
-typedef struct UWS_INSTANCE_TAG
+typedef struct UWS_CLIENT_INSTANCE_TAG
 {
     SINGLYLINKEDLIST_HANDLE pending_sends;
     XIO_HANDLE underlying_io;
@@ -89,7 +89,7 @@ typedef struct UWS_INSTANCE_TAG
     size_t received_bytes_count;
     UWS_FRAME_DECODER_STATE frame_decoder_state;
     BUFFER_HANDLE encode_buffer;
-} UWS_INSTANCE;
+} UWS_CLIENT_INSTANCE;
 
 /* Codes_SRS_UWS_CLIENT_01_360: [ Connection confidentiality and integrity is provided by running the WebSocket Protocol over TLS (wss URIs). ]*/
 /* Codes_SRS_UWS_CLIENT_01_361: [ WebSocket implementations MUST support TLS and SHOULD employ it when communicating with their peers. ]*/
@@ -127,7 +127,7 @@ UWS_CLIENT_HANDLE uws_client_create(const char* hostname, unsigned int port, con
         else
         {
             /* Codes_SRS_UWS_CLIENT_01_001: [`uws_client_create` shall create an instance of uws and return a non-NULL handle to it.]*/
-            result = malloc(sizeof(UWS_INSTANCE));
+            result = malloc(sizeof(UWS_CLIENT_INSTANCE));
             if (result == NULL)
             {
                 /* Codes_SRS_UWS_CLIENT_01_003: [ If allocating memory for the new uws instance fails then `uws_client_create` shall return NULL. ]*/
@@ -390,26 +390,38 @@ void uws_client_destroy(UWS_CLIENT_HANDLE uws_client)
     }
 }
 
-static void indicate_ws_open_complete_error(UWS_INSTANCE* uws_client, WS_OPEN_RESULT ws_open_result)
+static void indicate_ws_open_complete_error(UWS_CLIENT_INSTANCE* uws_client, WS_OPEN_RESULT ws_open_result)
 {
     /* Codes_SRS_UWS_CLIENT_01_409: [ After any error is indicated by `on_ws_open_complete`, a subsequent `uws_client_open` shall be possible. ]*/
     uws_client->on_ws_open_complete(uws_client->on_ws_open_complete_context, ws_open_result);
     uws_client->uws_state = UWS_STATE_CLOSED;
 }
 
-static void indicate_ws_open_complete_error_and_close(UWS_INSTANCE* uws_client, WS_OPEN_RESULT ws_open_result)
+static void indicate_ws_open_complete_error_and_close(UWS_CLIENT_INSTANCE* uws_client, WS_OPEN_RESULT ws_open_result)
 {
     indicate_ws_open_complete_error(uws_client, ws_open_result);
     (void)xio_close(uws_client->underlying_io, NULL, NULL);
 }
 
-static void indicate_ws_error(UWS_INSTANCE* uws_client, WS_ERROR error_code)
+static void indicate_ws_error(UWS_CLIENT_INSTANCE* uws_client, WS_ERROR error_code)
 {
     uws_client->uws_state = UWS_STATE_ERROR;
     uws_client->on_ws_error(uws_client->on_ws_error_context, error_code);
 }
 
-static void indicate_ws_error_and_close(UWS_INSTANCE* uws_client, WS_ERROR error_code, unsigned int close_error_code)
+static void indicate_ws_close_complete(UWS_CLIENT_INSTANCE* uws_client)
+{
+    uws_client->uws_state = UWS_STATE_CLOSED;
+
+    /* Codes_SRS_UWS_CLIENT_01_496: [ If the close was initiated by the peer no `on_ws_close_complete` shall be called. ]*/
+    if (uws_client->on_ws_close_complete != NULL)
+    {
+        /* Codes_SRS_UWS_CLIENT_01_491: [ When calling `on_ws_close_complete` callback, the `on_ws_close_complete_context` argument shall be passed to it. ]*/
+        uws_client->on_ws_close_complete(uws_client->on_ws_close_complete_context);
+    }
+}
+
+static void indicate_ws_error_and_close(UWS_CLIENT_INSTANCE* uws_client, WS_ERROR error_code, unsigned int close_error_code)
 {
     unsigned char* close_frame;
     unsigned char close_frame_payload[2];
@@ -549,7 +561,7 @@ static void on_underlying_io_open_complete(void* context, IO_OPEN_RESULT open_re
     }
 }
 
-static void consume_received_bytes(UWS_INSTANCE* uws_client, size_t consumed_bytes)
+static void consume_received_bytes(UWS_CLIENT_INSTANCE* uws_client, size_t consumed_bytes)
 {
     if (consumed_bytes < uws_client->received_bytes_count)
     {
@@ -579,7 +591,33 @@ static void on_underlying_io_close_complete(void* context)
 
 static void on_underlying_io_close_sent(void* context, IO_SEND_RESULT io_send_result)
 {
-    (void)context, io_send_result;
+    if (context == NULL)
+    {
+        /* Codes_SRS_UWS_CLIENT_01_489: [ When `on_underlying_io_close_sent` is called with NULL context, it shall do nothing. ] */
+        LogError("NULL context in ");
+    }
+    else
+    {
+        UWS_CLIENT_INSTANCE* uws_client = context;
+
+        switch (io_send_result)
+        {
+        case IO_SEND_OK:
+        case IO_SEND_CANCELLED:
+            if (uws_client->uws_state == UWS_STATE_CLOSING_SENDING_CLOSE)
+            {
+                /* Codes_SRS_UWS_CLIENT_01_490: [ When `on_underlying_io_close_sent` is called while the uws client is CLOSING, `on_underlying_io_close_sent` shall close the underlying IO by calling `xio_close`. ]*/
+                if (xio_close(uws_client->underlying_io, on_underlying_io_close_complete, uws_client) != 0)
+                {
+                    /* Codes_SRS_UWS_CLIENT_01_496: [ If the close was initiated by the peer no `on_ws_close_complete` shall be called. ]*/
+                    indicate_ws_close_complete(uws_client);
+                }
+            }
+
+        case IO_SEND_ERROR:
+            break;
+        }
+    }
 }
 
 /*the following function does the same as sscanf(pos2, "%d", &sec)*/
@@ -1113,6 +1151,14 @@ static void on_underlying_io_error(void* context)
     default:
         break;
 
+    case UWS_STATE_CLOSING_UNDERLYING_IO:
+    case UWS_STATE_CLOSING_SENDING_CLOSE:
+        /* Codes_SRS_UWS_CLIENT_01_377: [ When `on_underlying_io_error` is called while the uws instance is CLOSING shall indicate the error by calling the `on_ws_close_complete` callback and then it shall set the uws client in the CLOSED state. ]*/
+        indicate_ws_error(uws_client, WS_ERROR_UNDERLYING_IO_ERROR);
+        xio_close(uws_client->underlying_io, NULL, NULL);
+        uws_client->uws_state = UWS_STATE_CLOSED;
+        break;
+
     case UWS_STATE_OPENING_UNDERLYING_IO:
     case UWS_STATE_WAITING_FOR_UPGRADE_RESPONSE:
         /* Codes_SRS_UWS_CLIENT_01_375: [ When `on_underlying_io_error` is called while uws is OPENING, uws shall report that the open failed by calling the `on_ws_open_complete` callback passed to `uws_client_open` with `WS_OPEN_ERROR_UNDERLYING_IO_ERROR`. ]*/
@@ -1194,7 +1240,7 @@ int uws_client_open(UWS_CLIENT_HANDLE uws_client, ON_WS_OPEN_COMPLETE on_ws_open
 static int complete_send_frame(WS_PENDING_SEND* ws_pending_send, LIST_ITEM_HANDLE pending_send_frame_item, WS_SEND_FRAME_RESULT ws_send_frame_result)
 {
     int result;
-    UWS_INSTANCE* uws_client = ws_pending_send->uws_client;
+    UWS_CLIENT_INSTANCE* uws_client = ws_pending_send->uws_client;
 
     /* Codes_SRS_UWS_CLIENT_01_432: [ The indicated sent frame shall be removed from the list by calling `singlylinkedlist_remove`. ]*/
     if (singlylinkedlist_remove(uws_client->pending_sends, pending_send_frame_item) != 0)

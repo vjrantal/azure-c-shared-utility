@@ -18,7 +18,7 @@ extern "C" {
 #include "xio.h"
 #include "azure_c_shared_utility/umock_c_prod.h"
 
-typedef struct UWS_INSTANCE_TAG* UWS_CLIENT_HANDLE;
+typedef struct UWS_CLIENT_INSTANCE_TAG* UWS_CLIENT_HANDLE;
 
 #define WS_SEND_FRAME_RESULT_VALUES \
     WS_SEND_FRAME_OK, \

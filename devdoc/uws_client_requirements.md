@@ -32,7 +32,9 @@ DEFINE_ENUM(WS_SEND_FRAME_RESULT, WS_SEND_FRAME_RESULT_VALUES);
     WS_OPEN_ERROR_INVALID_BYTES_RECEIVED_ARGUMENTS, \
     WS_OPEN_ERROR_BYTES_RECEIVED_BEFORE_UNDERLYING_OPEN, \
     WS_OPEN_CANCELLED, \
-    WS_OPEN_ERROR_UNDERLYING_IO_ERROR
+    WS_OPEN_ERROR_UNDERLYING_IO_ERROR, \
+    WS_OPEN_ERROR_BAD_UPGRADE_RESPONSE, \
+    WS_OPEN_ERROR_BAD_RESPONSE_STATUS
 
 DEFINE_ENUM(WS_OPEN_RESULT, WS_OPEN_RESULT_VALUES);
 
@@ -40,12 +42,27 @@ DEFINE_ENUM(WS_OPEN_RESULT, WS_OPEN_RESULT_VALUES);
     WS_ERROR_NOT_ENOUGH_MEMORY, \
     WS_ERROR_BAD_FRAME_RECEIVED, \
     WS_ERROR_CANNOT_REMOVE_SENT_ITEM_FROM_LIST, \
-    WS_ERROR_UNDERLYING_IO_ERROR
+    WS_ERROR_UNDERLYING_IO_ERROR, \
+    WS_ERROR_CANNOT_CLOSE_UNDERLYING_IO
 
 DEFINE_ENUM(WS_ERROR, WS_ERROR_VALUES);
 
 #define WS_FRAME_TYPE_TEXT      0x01
 #define WS_FRAME_TYPE_BINARY    0x02
+
+#define CLOSE_NORMAL                        1000
+#define CLOSE_GOING_AWAY                    1001
+#define CLOSE_PROTOCOL_ERROR                1002
+#define CLOSE_CANNOT_ACCEPT_DATA_TYPE       1003
+#define CLOSE_UNDEFINED_1004                1004
+#define CLOSE_RESERVED_1005                 1005
+#define CLOSE_RESERVED_1006                 1006
+#define CLOSE_INCONSISTENT_DATA_IN_MESSAGE  1007
+#define CLOSE_POLICY_VIOLATION              1008
+#define CLOSE_MESSAGE_TOO_BIG               1009
+#define CLOSE_UNSUPPORTED_EXTENSION_LIST    1010
+#define CLOSE_UNEXPECTED_CONDITION          1011
+#define CLOSE_RESERVED_1015                 1015
 
 typedef void(*ON_WS_FRAME_RECEIVED)(void* context, unsigned char frame_type, const unsigned char* buffer, size_t size);
 typedef void(*ON_WS_SEND_FRAME_COMPLETE)(void* context, WS_SEND_FRAME_RESULT ws_send_frame_result);
@@ -61,9 +78,9 @@ typedef struct WS_PROTOCOL_TAG
 
 MOCKABLE_FUNCTION(, UWS_CLIENT_HANDLE, uws_client_create, const char*, hostname, unsigned int, port, const char*, resource_name, bool, use_ssl, const WS_PROTOCOL*, protocols, size_t, protocol_count);
 MOCKABLE_FUNCTION(, void, uws_client_destroy, UWS_CLIENT_HANDLE, uws_client);
-MOCKABLE_FUNCTION(, int, uws_client_open, UWS_CLIENT_HANDLE, uws_client, ON_WS_OPEN_COMPLETE, on_ws_open_complete, void*, on_ws_open_complete_context, ON_WS_FRAME_RECEIVED, on_ws_frame_received, void*, on_ws_frame_received_context, ON_WS_ERROR, on_ws_error, void*, on_ws_error_context);
+MOCKABLE_FUNCTION(, int, uws_client_open, UWS_CLIENT_HANDLE, uws_client, ON_WS_OPEN_COMPLETE, on_ws_open_complete, void*, on_ws_open_complete_context, ON_WS_FRAME_RECEIVED, on_ws_frame_received, void*, on_ws_frame_received_context, ON_WS_PEER_CLOSED, on_ws_peer_closed, void*, on_ws_peer_closed_context, ON_WS_ERROR, on_ws_error, void*, on_ws_error_context);
 MOCKABLE_FUNCTION(, int, uws_client_close, UWS_CLIENT_HANDLE, uws_client, ON_WS_CLOSE_COMPLETE, on_ws_close_complete, void*, on_ws_close_complete_context);
-MOCKABLE_FUNCTION(, int, uws_client_close_with_handshake, UWS_CLIENT_HANDLE, uws_client, ON_WS_CLOSE_COMPLETE, on_ws_close_complete, void*, on_ws_close_complete_context);
+MOCKABLE_FUNCTION(, int, uws_client_close_handshake, UWS_CLIENT_HANDLE, uws_client, uint16_t, close_code, const char*, close_reason, ON_WS_CLOSE_COMPLETE, on_ws_close_complete, void*, on_ws_close_complete_context);
 MOCKABLE_FUNCTION(, int, uws_client_send_frame, UWS_CLIENT_HANDLE, uws_client, unsigned char, frame_type, const unsigned char*, buffer, size_t, size, bool, is_final, ON_WS_SEND_FRAME_COMPLETE, on_ws_send_frame_complete, void*, callback_context);
 MOCKABLE_FUNCTION(, void, uws_client_dowork, UWS_CLIENT_HANDLE, uws_client);
 
@@ -254,7 +271,8 @@ XX**SRS_UWS_CLIENT_01_409: [** After any error is indicated by `on_ws_open_compl
 
 XX**SRS_UWS_CLIENT_01_375: [** When `on_underlying_io_error` is called while uws is OPENING, uws shall report that the open failed by calling the `on_ws_open_complete` callback passed to `uws_client_open` with `WS_OPEN_ERROR`. **]**
 XX**SRS_UWS_CLIENT_01_376: [** When `on_underlying_io_error` is called while the uws instance is OPEN, an error shall be reported to the user by calling the `on_ws_error` callback that was passed to `uws_client_open` with the argument `WS_ERROR_UNDERLYING_IO_ERROR`. **]**
-**SRS_UWS_CLIENT_01_377: [** When `on_underlying_io_error` is called while the uws instance is in any other state, `on_underlying_io_error` shall do nothing. **]** 
+**SRS_UWS_CLIENT_01_377: [** When `on_underlying_io_error` is called while the uws instance is CLOSING the undelying IO shall be closed by calling `xio_close` and the callback `on_ws_close_complete` shall be called. **]**
+**SRS_UWS_CLIENT_01_494: [** Also the uws client state shall be set to CLOSED. **]**
 
 ### on_underlying_io_bytes_received
 
@@ -279,6 +297,7 @@ XX**SRS_UWS_CLIENT_01_463: [** The extra bytes (besides the close code) shall be
 
 ### on_underlying_io_close_complete
 
+**SRS_UWS_CLIENT_01_495: [** When `on_underlying_io_close_complete` is called with NULL `context`, it shall do nothing. **]**
 **SRS_UWS_CLIENT_01_387: [** When `on_underlying_io_close_complete` is called when the uws instance is closing, the `on_ws_close_complete` callback passed to `uws_client_close` shall be called. **]**
 XX**SRS_UWS_CLIENT_01_476: [** If the close is as a result of receiving a CLOSE frame, no callback shall be called. **]**
 XX**SRS_UWS_CLIENT_01_475: [** When `on_underlying_io_close_complete` is called while closing the underlying IO a subsequent `uws_client_open` shall succeed. **]**
@@ -294,6 +313,13 @@ XX**SRS_UWS_CLIENT_01_390: [** When `on_underlying_io_send_complete` is called w
 XX**SRS_UWS_CLIENT_01_391: [** When `on_underlying_io_send_complete` is called with `IO_SEND_CANCELLED` as a result of sending a WebSocket frame to the underlying IO, the send shall be indicated to the uws user by calling `on_ws_send_frame_complete` with `WS_SEND_FRAME_CANCELLED`. **]**
 XX**SRS_UWS_CLIENT_01_435: [** When `on_underlying_io_send_complete` is called with a NULL `context`, it shall do nothing. **]**
 XX**SRS_UWS_CLIENT_01_436: [** When `on_underlying_io_send_complete` is called with any other error code, the send shall be indicated to the uws user by calling `on_ws_send_frame_complete` with `WS_SEND_FRAME_ERROR`. **]**
+
+### on_underlying_io_close_sent
+
+XX**SRS_UWS_CLIENT_01_489: [** When `on_underlying_io_close_sent` is called with NULL context, it shall do nothing. **]**
+**SRS_UWS_CLIENT_01_490: [** When `on_underlying_io_close_sent` is called while the uws client is CLOSING, `on_underlying_io_close_sent` shall close the underlying IO by calling `xio_close`. **]**
+**SRS_UWS_CLIENT_01_493: [** If calling `xio_close` fails, the state of the uws client shall be considered CLOSED and the `on_ws_close_complete` shall be called if it was specified. **]**
+**SRS_UWS_CLIENT_01_491: [** When calling `on_ws_close_complete` callback, the `on_ws_close_complete_context` argument shall be passed to it. **]**
 
 ### RFC6455
 
