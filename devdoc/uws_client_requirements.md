@@ -971,12 +971,12 @@ XX**SRS_UWS_CLIENT_01_496: [** If the close was initiated by the peer no `on_ws_
 
    o  **SRS_UWS_CLIENT_01_220: [** Clients and servers MUST support receiving both fragmented and unfragmented messages. **]**
 
-   o  **SRS_UWS_CLIENT_01_221: [** As control frames cannot be fragmented, an intermediary MUST NOT attempt to change the fragmentation of a control frame. **]**
+   o  As control frames cannot be fragmented, an intermediary MUST NOT attempt to change the fragmentation of a control frame.
 
-   o  **SRS_UWS_CLIENT_01_222: [** An intermediary MUST NOT change the fragmentation of a message if any reserved bit values are used and the meaning of these values is not known to the intermediary. **]**
+   o  An intermediary MUST NOT change the fragmentation of a message if any reserved bit values are used and the meaning of these values is not known to the intermediary.
 
-   o  **SRS_UWS_CLIENT_01_223: [** An intermediary MUST NOT change the fragmentation of any message in the context of a connection where extensions have been negotiated and the intermediary is not aware of the semantics of the negotiated extensions. **]**
-      **SRS_UWS_CLIENT_01_224: [** Similarly, an intermediary that didn't see the WebSocket handshake (and wasn't notified about its content) that resulted in a WebSocket connection MUST NOT change the fragmentation of any message of such connection. **]**
+   o  An intermediary MUST NOT change the fragmentation of any message in the context of a connection where extensions have been negotiated and the intermediary is not aware of the semantics of the negotiated extensions.
+      Similarly, an intermediary that didn't see the WebSocket handshake (and wasn't notified about its content) that resulted in a WebSocket connection MUST NOT change the fragmentation of any message of such connection.
 
    o  **SRS_UWS_CLIENT_01_225: [** As a consequence of these rules, all fragments of a message are of the same type, as set by the first fragment's opcode. **]**
       **SRS_UWS_CLIENT_01_226: [** Since control frames cannot be fragmented, the type for all fragments in a message MUST be either text, binary, or one of the reserved opcodes. **]**
