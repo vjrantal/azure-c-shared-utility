@@ -47,6 +47,7 @@ Tests_SRS_UWS_CLIENT_01_334: [ 1010 indicates that an endpoint (client) is termi
 Tests_SRS_UWS_CLIENT_01_336: [ 1011 indicates that a server is terminating the connection because it encountered an unexpected condition that prevented it from fulfilling the request. ]
 Tests_SRS_UWS_CLIENT_01_337: [ 1015 is a reserved value and MUST NOT be set as a status code in a Close control frame by an endpoint. ]
 Tests_SRS_UWS_CLIENT_01_238: [ As the data is not guaranteed to be human readable, clients MUST NOT show it to end users. ]
+Tests_SRS_UWS_CLIENT_01_211: [ One implication of this is that in absence of extensions, senders and receivers must not depend on the presence of specific frame boundaries. ]
 */
 
 #define ENABLE_MOCKS

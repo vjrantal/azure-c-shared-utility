@@ -273,8 +273,8 @@ XX**SRS_UWS_CLIENT_01_409: [** After any error is indicated by `on_ws_open_compl
 XX**SRS_UWS_CLIENT_01_375: [** When `on_underlying_io_error` is called while uws is OPENING, uws shall report that the open failed by calling the `on_ws_open_complete` callback passed to `uws_client_open` with `WS_OPEN_ERROR`. **]**
 XX**SRS_UWS_CLIENT_01_376: [** When `on_underlying_io_error` is called while the uws instance is OPEN, an error shall be reported to the user by calling the `on_ws_error` callback that was passed to `uws_client_open` with the argument `WS_ERROR_UNDERLYING_IO_ERROR`. **]**
 XX**SRS_UWS_CLIENT_01_377: [** When `on_underlying_io_error` is called while the uws instance is CLOSING the underlying IO shall be closed by calling `xio_close`. **]**
-**SRS_UWS_CLIENT_01_500: [** The callback `on_ws_close_complete` shall be called, while passing the `on_ws_close_complete_context` argument to it. **]**
-**SRS_UWS_CLIENT_01_499: [** If the CLOSE was due to the peer closing, the callback `on_ws_close_complete` shall not be called. **]**
+XX**SRS_UWS_CLIENT_01_500: [** The callback `on_ws_close_complete` shall be called, while passing the `on_ws_close_complete_context` argument to it. **]**
+XX**SRS_UWS_CLIENT_01_499: [** If the CLOSE was due to the peer closing, the callback `on_ws_close_complete` shall not be called. **]**
 
 ### on_underlying_io_bytes_received
 
@@ -451,12 +451,12 @@ XX**SRS_UWS_CLIENT_01_496: [** If the close was initiated by the peer no `on_ws_
         NOTE: Although draft versions of this document (-09, -10, -11, and -12) were posted (they were mostly comprised of editorial changes and clarifications and not changes to the wire protocol), values 9, 10, 11, and 12 were not used as valid values for Sec-WebSocket-Version.
         These values were reserved in the IANA registry but were not and will not be used.
 
-   10.  X**SRS_UWS_CLIENT_01_096: [** The request MAY include a header field with the name |Sec-WebSocket-Protocol|. **]**
+   10.  XX**SRS_UWS_CLIENT_01_096: [** The request MAY include a header field with the name |Sec-WebSocket-Protocol|. **]**
         **SRS_UWS_CLIENT_01_097: [** If present, this value indicates one or more comma-separated subprotocol the client wishes to speak, ordered by preference. **]**
         **SRS_UWS_CLIENT_01_098: [** The elements that comprise this value MUST be non-empty strings with characters in the range U+0021 to U+007E not including separator characters as defined in [RFC2616] **]** **SRS_UWS_CLIENT_01_099: [** and MUST all be unique strings **]**.
         The ABNF for the value of this header field is 1#token, where the definitions of constructs and rules are as given in [RFC2616].
 
-   11.  X**SRS_UWS_CLIENT_01_100: [** The request MAY include a header field with the name |Sec-WebSocket-Extensions|. **]**
+   11.  **SRS_UWS_CLIENT_01_100: [** The request MAY include a header field with the name |Sec-WebSocket-Extensions|. **]**
         If present, this value indicates the protocol-level extension(s) the client wishes to speak.
         The interpretation and format of this header field is described in Section 9.1.
 
@@ -944,8 +944,8 @@ XX**SRS_UWS_CLIENT_01_496: [** If the close was initiated by the peer no `on_ws_
    (Note that the multiplexing extension is not described in this document.)
 
    Unless specified otherwise by an extension, frames have no semantic meaning.
-   **SRS_UWS_CLIENT_01_209: [** An intermediary might coalesce and/or split frames, if no extensions were negotiated by the client and the server **]** or **SRS_UWS_CLIENT_01_210: [** if some extensions were negotiated, but the intermediary understood all the extensions negotiated and knows how to coalesce and/or split frames in the presence of these extensions. **]**
-   **SRS_UWS_CLIENT_01_211: [** One implication of this is that in absence of extensions, senders and receivers must not depend on the presence of specific frame boundaries. **]**
+   An intermediary might coalesce and/or split frames, if no extensions were negotiated by the client and the server or if some extensions were negotiated, but the intermediary understood all the extensions negotiated and knows how to coalesce and/or split frames in the presence of these extensions.
+   XX**SRS_UWS_CLIENT_01_211: [** One implication of this is that in absence of extensions, senders and receivers must not depend on the presence of specific frame boundaries. **]**
 
    The following rules apply to fragmentation:
 

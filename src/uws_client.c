@@ -36,6 +36,10 @@ Codes_SRS_UWS_CLIENT_01_078: [ Otherwise, all further communication on this chan
 Codes_SRS_UWS_CLIENT_01_141: [ masking is done whether or not the WebSocket Protocol is running over TLS. ]
 */
 
+/* Requirements satisfied by the way the APIs are designed:
+Tests_SRS_UWS_CLIENT_01_211: [One implication of this is that in absence of extensions, senders and receivers must not depend on the presence of specific frame boundaries.]
+*/
+
 typedef enum UWS_STATE_TAG
 {
     UWS_STATE_CLOSED,
