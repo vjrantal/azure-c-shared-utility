@@ -296,8 +296,8 @@ XX**SRS_UWS_CLIENT_01_463: [** The extra bytes (besides the close code) shall be
 
 ### on_underlying_io_close_complete
 
-**SRS_UWS_CLIENT_01_495: [** When `on_underlying_io_close_complete` is called with NULL `context`, it shall do nothing. **]**
-**SRS_UWS_CLIENT_01_387: [** When `on_underlying_io_close_complete` is called when the uws instance is closing, the `on_ws_close_complete` callback passed to `uws_client_close` shall be called. **]**
+XX**SRS_UWS_CLIENT_01_495: [** When `on_underlying_io_close_complete` is called with NULL `context`, it shall do nothing. **]**
+XX**SRS_UWS_CLIENT_01_387: [** When `on_underlying_io_close_complete` is called when the uws instance is closing, the `on_ws_close_complete` callback passed to `uws_client_close` shall be called. **]**
 XX**SRS_UWS_CLIENT_01_476: [** If the close is as a result of receiving a CLOSE frame, no callback shall be called. **]**
 XX**SRS_UWS_CLIENT_01_475: [** When `on_underlying_io_close_complete` is called while closing the underlying IO a subsequent `uws_client_open` shall succeed. **]**
 XX**SRS_UWS_CLIENT_01_477: [** When `on_underlying_io_close_complete` is called with a NULL context, it shall do nothing. **]**
@@ -317,8 +317,6 @@ XX**SRS_UWS_CLIENT_01_436: [** When `on_underlying_io_send_complete` is called w
 
 XX**SRS_UWS_CLIENT_01_489: [** When `on_underlying_io_close_sent` is called with NULL context, it shall do nothing. **]**
 XX**SRS_UWS_CLIENT_01_490: [** When `on_underlying_io_close_sent` is called while the uws client is CLOSING, `on_underlying_io_close_sent` shall close the underlying IO by calling `xio_close`. **]**
-**SRS_UWS_CLIENT_01_493: [** If calling `xio_close` fails, the state of the uws client shall be considered CLOSED and the `on_ws_close_complete` shall be called if it was specified. **]**
-**SRS_UWS_CLIENT_01_491: [** When calling `on_ws_close_complete` callback, the `on_ws_close_complete_context` argument shall be passed to it. **]**
 XX**SRS_UWS_CLIENT_01_496: [** If the close was initiated by the peer no `on_ws_close_complete` shall be called. **]**
 
 ### RFC6455

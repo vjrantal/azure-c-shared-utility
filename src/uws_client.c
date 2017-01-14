@@ -40,6 +40,7 @@ typedef enum UWS_STATE_TAG
     UWS_STATE_OPENING_UNDERLYING_IO,
     UWS_STATE_WAITING_FOR_UPGRADE_RESPONSE,
     UWS_STATE_OPEN,
+    UWS_STATE_CLOSING_WAITING_FOR_CLOSE,
     UWS_STATE_CLOSING_SENDING_CLOSE,
     UWS_STATE_CLOSING_UNDERLYING_IO,
     UWS_STATE_ERROR
@@ -514,6 +515,7 @@ static void on_underlying_io_open_complete(void* context, IO_OPEN_RESULT open_re
                 /* Codes_SRS_UWS_CLIENT_01_095: [ The value of this header field MUST be 13. ]*/
                 /* Codes_SRS_UWS_CLIENT_01_096: [ The request MAY include a header field with the name |Sec-WebSocket-Protocol|. ]*/
                 /* Codes_SRS_UWS_CLIENT_01_100: [ The request MAY include a header field with the name |Sec-WebSocket-Extensions|. ]*/
+                /* Codes_SRS_UWS_CLIENT_01_089: [ The value of this header field MUST be a nonce consisting of a randomly selected 16-byte value that has been base64-encoded (see Section 4 of [RFC4648]). ]*/
                 const char upgrade_request_format[] = "GET %s HTTP/1.1\r\n"
                     "Host: %s:%d\r\n"
                     "Upgrade: websocket\r\n"
@@ -600,6 +602,7 @@ static void on_underlying_io_close_complete(void* context)
         if (uws_client->uws_state == UWS_STATE_CLOSING_UNDERLYING_IO)
         {
             /* Codes_SRS_UWS_CLIENT_01_475: [ When `on_underlying_io_close_complete` is called while closing the underlying IO a subsequent `uws_client_open` shall succeed. ]*/
+            indicate_ws_close_complete(uws_client);
             uws_client->uws_state = UWS_STATE_CLOSED;
         }
     }
@@ -786,6 +789,7 @@ static void on_underlying_io_bytes_received(void* context, const unsigned char* 
             }
 
             case UWS_STATE_OPEN:
+            case UWS_STATE_CLOSING_WAITING_FOR_CLOSE:
             {
                 /* Codes_SRS_UWS_CLIENT_01_385: [ If the state of the uws instance is OPEN, the received bytes shall be used for decoding WebSocket frames. ]*/
                 unsigned char* new_received_bytes = (unsigned char*)realloc(uws_client->received_bytes, uws_client->received_bytes_count + size + 1);
@@ -876,6 +880,7 @@ static void on_underlying_io_bytes_received(void* context, const unsigned char* 
                 }
 
                 case UWS_STATE_OPEN:
+                case UWS_STATE_CLOSING_WAITING_FOR_CLOSE:
                 {
                     size_t needed_bytes = 2;
                     size_t length;
@@ -1066,9 +1071,21 @@ static void on_underlying_io_bytes_received(void* context, const unsigned char* 
                                 }
                                 else
                                 {
-                                    /* Codes_SRS_UWS_CLIENT_01_296: [ Upon either sending or receiving a Close control frame, it is said that _The WebSocket Closing Handshake is Started_ and that the WebSocket connection is in the CLOSING state. ]*/
-                                    /* Codes_SRS_UWS_CLIENT_01_240: [ The application MUST NOT send any more data frames after sending a Close frame. ]*/
-                                    uws_client->uws_state = UWS_STATE_CLOSING_SENDING_CLOSE;
+                                    if (uws_client->uws_state == UWS_STATE_CLOSING_WAITING_FOR_CLOSE)
+                                    {
+                                        uws_client->uws_state = UWS_STATE_CLOSING_UNDERLYING_IO;
+                                        if (xio_close(uws_client->underlying_io, on_underlying_io_close_complete, uws_client) != 0)
+                                        {
+                                            indicate_ws_close_complete(uws_client);
+                                            uws_client->uws_state = UWS_STATE_CLOSED;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        /* Codes_SRS_UWS_CLIENT_01_296: [ Upon either sending or receiving a Close control frame, it is said that _The WebSocket Closing Handshake is Started_ and that the WebSocket connection is in the CLOSING state. ]*/
+                                        /* Codes_SRS_UWS_CLIENT_01_240: [ The application MUST NOT send any more data frames after sending a Close frame. ]*/
+                                        uws_client->uws_state = UWS_STATE_CLOSING_SENDING_CLOSE;
+                                    }
 
                                     /* Codes_SRS_UWS_CLIENT_01_241: [ If an endpoint receives a Close frame and did not previously send a Close frame, the endpoint MUST send a Close frame in response. ]*/
                                     /* Codes_SRS_UWS_CLIENT_01_242: [ It SHOULD do so as soon as practical. ]*/
@@ -1300,6 +1317,7 @@ int uws_client_close(UWS_CLIENT_HANDLE uws_client, ON_WS_CLOSE_COMPLETE on_ws_cl
     {
         if ((uws_client->uws_state == UWS_STATE_CLOSED) ||
             (uws_client->uws_state == UWS_STATE_CLOSING_SENDING_CLOSE) ||
+            (uws_client->uws_state == UWS_STATE_CLOSING_WAITING_FOR_CLOSE) ||
             (uws_client->uws_state == UWS_STATE_CLOSING_UNDERLYING_IO))
         {
             /* Codes_SRS_UWS_CLIENT_01_032: [ `uws_client_close` when no open action has been issued shall fail and return a non-zero value. ]*/
@@ -1360,6 +1378,7 @@ int uws_client_close_handshake(UWS_CLIENT_HANDLE uws_client, uint16_t close_code
     {
         if ((uws_client->uws_state == UWS_STATE_CLOSED) ||
             /* Codes_SRS_UWS_CLIENT_01_474: [ `uws_client_close_handshake` when already CLOSING shall fail and return a non-zero value. ]*/
+            (uws_client->uws_state == UWS_STATE_CLOSING_WAITING_FOR_CLOSE) ||
             (uws_client->uws_state == UWS_STATE_CLOSING_SENDING_CLOSE) ||
             (uws_client->uws_state == UWS_STATE_CLOSING_UNDERLYING_IO))
         {
@@ -1376,6 +1395,8 @@ int uws_client_close_handshake(UWS_CLIENT_HANDLE uws_client, uint16_t close_code
             /* Codes_SRS_UWS_CLIENT_01_470: [ `on_ws_close_complete_context` shall also be allowed to be NULL. ]*/
             uws_client->on_ws_close_complete = on_ws_close_complete;
             uws_client->on_ws_close_complete_context = on_ws_close_complete_context;
+
+            uws_client->uws_state = UWS_STATE_CLOSING_WAITING_FOR_CLOSE;
 
             /* Codes_SRS_UWS_CLIENT_01_465: [ `uws_client_close_handshake` shall initiate the close handshake by sending a close frame to the peer. ]*/
             if (send_close_frame(uws_client, close_code) != 0)
