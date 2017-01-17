@@ -647,6 +647,8 @@ BEGIN_TEST_SUITE(tlsio_esp8266_ut)
     {
         ///arrange
         TLSIO_CONFIG tlsio_config;
+        tlsio_config.hostname = "test";
+        tlsio_config.port = 4242;
 
         OPTIONHANDLER_HANDLE result;
         const IO_INTERFACE_DESCRIPTION* tlsioInterfaces = tlsio_openssl_get_interface_description();
