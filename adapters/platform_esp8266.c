@@ -14,6 +14,7 @@
 
 int platform_init(void)
 {
+    sntp_setservername(0, "pool.ntp.org");
     sntp_init();
     u32_t ts = 0;
     while(ts == 0){

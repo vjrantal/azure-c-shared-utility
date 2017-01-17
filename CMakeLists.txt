@@ -342,15 +342,20 @@ set(source_c_files
 ./src/vector.c
 ./src/xlogging.c
 ./src/optionhandler.c
-./adapters/agenttime.c
+${AGENTTIME_C_FILE}
 ${CONDITION_C_FILE}
-${LOCK_C_FILE}
 ${PLATFORM_C_FILE}
 ${SOCKETIO_C_FILE}
 ${TICKCOUTER_C_FILE}
 ${THREAD_C_FILE}
 ${UNIQUEID_C_FILE}
 )
+
+if(${use_lock_adapter})
+    set(source_c_files ${source_c_files}
+        ${LOCK_C_FILE}
+    )
+endif()
 
 if(${use_http})
     set(source_c_files ${source_c_files}
@@ -384,6 +389,10 @@ if(${use_cyclonessl} AND WIN32)
         ./src/tlsio_cyclonessl_socket_bsd.c
         )
 endif()
+
+set(source_c_files ${source_c_files}
+    ./adapters/tlsio_ssl_esp8266.c
+)
 
 #these are the C headers
 set(source_h_files

@@ -250,14 +250,14 @@ LOCAL int openssl_thread_LWIP_CONNECTION(TLS_IO_INSTANCE* p)
             ret = connect(sock, (struct sockaddr*)&sock_addr, sizeof(sock_addr));
             if (ret == -1) {
                 ret = lwip_net_errno(sock);
-                if (ret != EINPROGRESS){
+                if (ret != 115){ // EINPROGRESS
                     result = __LINE__;
                     ret = -1;
                     LogError("socket connect failed %s", tls_io_instance->hostname);
                 }
             }
 
-            if(ret != -1 || ret == EINPROGRESS)
+            if(ret != -1 || ret == 115) // EINPROGRESS
             {
                 // LogInfo("socket connect OK");
                 char recv_buf[128];
@@ -318,9 +318,8 @@ LOCAL int openssl_thread_LWIP_CONNECTION(TLS_IO_INSTANCE* p)
                         else
                         {
                             // LogInfo("SSL set fd");
-                            // returns 1 on success
                             ret = SSL_set_fd(ssl, sock);
-                            if (ret != 1){
+                            if (ret != 0){
                                 result = __LINE__;
                                 LogError("SSL_set_fd failed");
                             }
