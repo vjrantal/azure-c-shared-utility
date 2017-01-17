@@ -307,8 +307,8 @@ BEGIN_TEST_SUITE(tlsio_esp8266_ut)
     TEST_FUNCTION(tlsio_openssl_dowork__succeed)
     {
         ///arrange
-        int result = 0;
         TLS_IO_INSTANCE instance;
+        instance.tlsio_state = TLSIO_STATE_OPEN;
         instance.on_bytes_received = on_bytes_received;
 
         const IO_INTERFACE_DESCRIPTION* tlsioInterfaces = tlsio_openssl_get_interface_description();
@@ -321,7 +321,6 @@ BEGIN_TEST_SUITE(tlsio_esp8266_ut)
         tlsioInterfaces->concrete_io_dowork(&instance);
         
         ///assert
-        ASSERT_ARE_EQUAL(int, result, 0);
         ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
         ///cleanup
     }
