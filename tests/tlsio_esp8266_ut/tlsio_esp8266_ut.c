@@ -150,6 +150,10 @@ int my_connect(int s, const struct sockaddr *name, socklen_t namelen){
     return 0;
 }
 
+void my_os_delay_us(int us){
+
+}
+
 
 static void test_on_io_open_complete(void* context, IO_OPEN_RESULT open_result)
 {

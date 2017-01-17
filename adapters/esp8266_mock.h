@@ -415,6 +415,7 @@ MOCKABLE_FUNCTION(, int, bind, int, s, const struct sockaddr*, name, socklen_t, 
 //int connect(int s, const struct sockaddr *name, socklen_t namelen);
 MOCKABLE_FUNCTION(, int, connect, int, s, const struct sockaddr*, name, socklen_t, namelen);
 
+MOCKABLE_FUNCTION(, void, os_delay_us, int, us);
 
 MOCKABLE_FUNCTION(, int, lwip_select, int, maxfdp1, fd_set*, readset, fd_set*, writeset, fd_set*, exceptset, struct timeval*, timeout);
 //int lwip_select(int maxfdp1, fd_set *readset, fd_set *writeset, fd_set *exceptset,
